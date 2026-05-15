@@ -40,6 +40,46 @@ class SampleParserTests(unittest.TestCase):
         self.assertTrue(resultado["linhas"])
         self.assertTrue(all(linha["Status"] == "OK por arredondamento" for linha in resultado["linhas"]))
 
+    def test_atua_pr_multilinha_parser(self):
+        linhas = [
+            (1, "43"),
+            (1, "CT"),
+            (1, "01/04/26 15:15"),
+            (1, "TR"),
+            (1, "52 / AG L"),
+            (1, "72593 / SUP"),
+            (1, "77693 / LUIZ"),
+            (1, "72593 / SUPER"),
+            (1, "HMI1E00"),
+            (1, "10,012"),
+            (1, "2.202,64"),
+            (1, "2.012,91"),
+            (1, "220,00"),
+            (1, "201,05"),
+        ]
+        registros = ae._extrair_atua_pr_multilinha(linhas)
+        self.assertEqual(registros["43"]["empresa"], Decimal("2202.64"))
+        self.assertEqual(registros["43"]["motorista"], Decimal("2012.91"))
+
+    def test_gw_pr_multilinha_parser(self):
+        linhas = [
+            (1, "01/04/2026"),
+            (1, "2.202,64"),
+            (1, "SUPERBAC INDUSTRIA E"),
+            (1, "167,40"),
+            (1, "1.938,32"),
+            (1, "000043"),
+            (1, "264,32"),
+            (1, "0,00"),
+            (1, "36,34"),
+            (1, "1.938,32"),
+            (1, "0,00"),
+            (1, "-9,25%"),
+        ]
+        registros = ae._extrair_gw_pr_multilinha(linhas)
+        self.assertEqual(registros["43"]["empresa"], Decimal("2202.64"))
+        self.assertEqual(registros["43"]["motorista"], Decimal("1938.32"))
+
 
 if __name__ == "__main__":
     unittest.main()
