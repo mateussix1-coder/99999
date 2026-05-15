@@ -353,6 +353,15 @@ def _extrair_atua_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _detectar_atua_pr_multilinha(linhas_pdf) -> bool:
+    for idx in range(len(linhas_pdf) - 1):
+        linha = linhas_pdf[idx][1]
+        prox = linhas_pdf[idx + 1][1]
+        if linha.isdigit() and prox == "CT":
+            return True
+    return False
+
+
 def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
@@ -364,8 +373,9 @@ def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     if registros:
         LAST_PARSE_INFO["atual"] = {"formato": "ATUA multilinha legado", "ctes": len(registros)}
         return registros
-    texto_total = " ".join(l for _, l in linhas_pdf[:300])
-    if "Relatorio Detalhado do CTRC" in texto_total or "Relatório Detalhado do CTRC" in texto_total:
+    texto_total = " ".join(l for _, l in linhas_pdf[:500])
+    tem_header_pr = "Relatorio Detalhado do CTRC" in texto_total or "Relatório Detalhado do CTRC" in texto_total
+    if tem_header_pr or _detectar_atua_pr_multilinha(linhas_pdf):
         registros = _extrair_atua_pr_multilinha(linhas_pdf)
         LAST_PARSE_INFO["atual"] = {"formato": "ATUA PR multilinha", "ctes": len(registros)}
         return registros
@@ -499,6 +509,17 @@ def _extrair_gw_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _detectar_gw_pr_multilinha(linhas_pdf) -> bool:
+    for i, (_, linha) in enumerate(linhas_pdf):
+        if not RE_CTE_PR_GW.fullmatch(linha):
+            continue
+        empresa = parse_money_br(linhas_pdf[i - 4][1]) if i - 4 >= 0 else None
+        motorista = parse_money_br(linhas_pdf[i - 1][1]) if i - 1 >= 0 else None
+        if empresa is not None and motorista is not None:
+            return True
+    return False
+
+
 def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
@@ -510,8 +531,9 @@ def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     if registros:
         LAST_PARSE_INFO["gw"] = {"formato": "GW multilinha legado", "ctes": len(registros)}
         return registros
-    texto_total = " ".join(l for _, l in linhas_pdf[:400])
-    if "Analise de CTe/NFS com impostos" in texto_total or "Análise de CTe/NFS com impostos" in texto_total:
+    texto_total = " ".join(l for _, l in linhas_pdf[:600])
+    tem_header_pr = "Analise de CTe/NFS com impostos" in texto_total or "Análise de CTe/NFS com impostos" in texto_total
+    if tem_header_pr or _detectar_gw_pr_multilinha(linhas_pdf):
         registros = _extrair_gw_pr_multilinha(linhas_pdf)
         LAST_PARSE_INFO["gw"] = {"formato": "GW PR multilinha", "ctes": len(registros)}
         return registros
