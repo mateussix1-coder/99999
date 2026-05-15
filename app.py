@@ -2638,8 +2638,13 @@ html, body, [class*="css"] {
         linear-gradient(180deg, #fbfcff 0%, #f6f8fc 50%, #f3f7fd 100%) !important;
 }
 
+.fv-shell-root {
+    width: min(100%, 1760px);
+    margin: 0 auto;
+}
+
 .block-container {
-    padding: 20px 24px 42px !important;
+    padding: 16px 20px 28px !important;
 }
 
 @keyframes fvFadeUp {
@@ -2666,7 +2671,7 @@ html, body, [class*="css"] {
 
 .fv-sticky {
     position: sticky;
-    top: 20px;
+    top: 16px;
 }
 
 .fv-surface-card {
@@ -2674,7 +2679,7 @@ html, body, [class*="css"] {
     overflow: hidden;
     background: var(--fv-surface);
     border: 1px solid var(--fv-line);
-    border-radius: 28px;
+    border-radius: 24px;
     box-shadow: var(--fv-shadow);
     backdrop-filter: blur(14px);
 }
@@ -2685,14 +2690,14 @@ html, body, [class*="css"] {
 }
 
 .fv-sidebar-shell {
-    padding: 24px 20px 18px;
+    padding: 20px 18px 16px;
 }
 
 .fv-brand {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
 }
 
 .fv-brand-mark {
@@ -2736,15 +2741,15 @@ html, body, [class*="css"] {
 
 .fv-sidebar-nav {
     display: block;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
 }
 
 .fv-sidebar-nav .stButton > button {
-    min-height: 50px;
-    border-radius: 18px;
+    min-height: 46px;
+    border-radius: 16px;
     border: 1px solid transparent;
     justify-content: flex-start;
-    padding: 0 16px;
+    padding: 0 14px;
     font-weight: 600;
     color: #334155;
     background: transparent;
@@ -2771,10 +2776,10 @@ html, body, [class*="css"] {
 }
 
 .fv-plan-card {
-    padding: 18px 18px 16px;
+    padding: 16px 16px 14px;
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,255,0.98));
     border: 1px solid #dfe7f5;
-    border-radius: 22px;
+    border-radius: 20px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
@@ -2810,7 +2815,7 @@ html, body, [class*="css"] {
 }
 
 .fv-sidebar-footer {
-    margin-top: 24px;
+    margin-top: 18px;
     text-align: center;
     color: #94a3b8;
     font-size: 0.82rem;
@@ -2818,25 +2823,30 @@ html, body, [class*="css"] {
 }
 
 .fv-topbar-shell {
-    padding: 18px 22px;
-    min-height: 86px;
+    padding: 14px 18px;
+    min-height: 74px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 18px;
 }
 
 .fv-topbar-search {
-    width: 100%;
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 0 4px;
+    gap: 12px;
+    min-width: 0;
 }
 
 .fv-topbar-search-copy {
     flex: 1;
     color: #94a3b8;
-    font-size: 1.02rem;
+    font-size: 0.98rem;
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .fv-topbar-search-icon {
@@ -2859,18 +2869,17 @@ html, body, [class*="css"] {
 }
 
 .fv-topbar-actions {
-    padding: 18px 20px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 14px;
-    min-height: 86px;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .fv-bell {
-    width: 44px;
-    height: 44px;
-    border-radius: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
     border: 1px solid #e2e8f0;
     background: #ffffff;
     display: flex;
@@ -2897,9 +2906,9 @@ html, body, [class*="css"] {
 }
 
 .fv-status-pill {
-    height: 44px;
-    padding: 0 18px;
-    border-radius: 16px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 14px;
     border: 1px solid #dfe8f6;
     background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
     display: inline-flex;
@@ -2925,9 +2934,9 @@ html, body, [class*="css"] {
 }
 
 .fv-user-avatar {
-    width: 46px;
-    height: 46px;
-    border-radius: 18px;
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
     background: linear-gradient(145deg, #dbeafe, #eef2ff);
     color: #1e3a8a;
     display: flex;
@@ -2957,14 +2966,14 @@ html, body, [class*="css"] {
 .fv-kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    margin: 18px 0;
+    gap: 14px;
+    margin: 14px 0 16px;
 }
 
 .fv-kpi-card {
     position: relative;
-    padding: 18px 18px 16px;
-    border-radius: 26px;
+    padding: 16px 16px 14px;
+    border-radius: 22px;
     background: rgba(255,255,255,0.95);
     border: 1px solid #e3eaf5;
     box-shadow: var(--fv-shadow-soft);
@@ -2997,9 +3006,9 @@ html, body, [class*="css"] {
 }
 
 .fv-kpi-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3025,9 +3034,9 @@ html, body, [class*="css"] {
 
 .fv-kpi-copy b {
     display: block;
-    margin-top: 8px;
+    margin-top: 6px;
     color: var(--fv-text);
-    font-size: 1.88rem;
+    font-size: 1.72rem;
     line-height: 1.1;
 }
 
@@ -3043,13 +3052,13 @@ html, body, [class*="css"] {
 .fv-kpi-copy span.blue { color: var(--fv-blue); }
 
 .fv-kpi-spark {
-    min-width: 100px;
+    min-width: 92px;
     align-self: center;
 }
 
 .fv-audit-shell {
-    padding: 26px 24px 24px;
-    margin-top: 8px;
+    padding: 22px 22px 20px;
+    margin-top: 4px;
 }
 
 .fv-audit-shell::before {
@@ -3066,20 +3075,20 @@ html, body, [class*="css"] {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 18px;
+    gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 22px;
+    margin-bottom: 16px;
 }
 
 .fv-main-title-wrap {
     display: flex;
-    gap: 16px;
+    gap: 14px;
 }
 
 .fv-main-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
     background: linear-gradient(135deg, var(--fv-blue), var(--fv-violet));
     color: #fff;
     display: flex;
@@ -3090,23 +3099,23 @@ html, body, [class*="css"] {
 }
 
 .fv-main-title {
-    font-size: 1.9rem;
+    font-size: 1.72rem;
     font-weight: 800;
     line-height: 1.05;
     color: var(--fv-text);
 }
 
 .fv-main-subtitle {
-    margin-top: 7px;
+    margin-top: 5px;
     color: var(--fv-text-soft);
-    font-size: 0.98rem;
-    max-width: 720px;
-    line-height: 1.6;
+    font-size: 0.94rem;
+    max-width: 680px;
+    line-height: 1.5;
 }
 
 .fv-main-head-actions .stButton > button {
-    min-height: 46px;
-    border-radius: 16px;
+    min-height: 42px;
+    border-radius: 14px;
     border: 1px solid #dce5f4;
     background: rgba(255,255,255,0.92);
     color: #334155;
@@ -3122,22 +3131,22 @@ html, body, [class*="css"] {
 }
 
 .fv-section-label {
-    margin: 4px 0 12px;
+    margin: 2px 0 10px;
     color: #334155;
-    font-size: 1rem;
+    font-size: 0.96rem;
     font-weight: 700;
 }
 
 .fv-tolerance-block [data-testid="stPills"] {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
 }
 
 .fv-tolerance-block [data-testid="stPills"] [data-baseweb="tag"] {
-    min-height: 46px;
+    min-height: 42px;
     padding: 4px 6px;
-    border-radius: 18px;
+    border-radius: 16px;
     border: 1px solid #dde6f3 !important;
     background: rgba(255,255,255,0.92) !important;
     box-shadow: 0 6px 16px rgba(148,163,184,0.08);
@@ -3159,10 +3168,48 @@ html, body, [class*="css"] {
     color: #334155 !important;
     font-weight: 700 !important;
     border-radius: 14px !important;
-    padding: 0 14px !important;
+    padding: 0 12px !important;
 }
 
 .fv-tolerance-block [data-testid="stPills"] button[aria-pressed="true"] {
+    color: var(--fv-violet) !important;
+}
+
+.stMain [data-testid="stPills"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.stMain [data-testid="stPills"] [data-baseweb="tag"] {
+    min-height: 42px;
+    padding: 4px 6px;
+    border-radius: 16px;
+    border: 1px solid #dde6f3 !important;
+    background: rgba(255,255,255,0.92) !important;
+    box-shadow: 0 6px 16px rgba(148,163,184,0.08);
+    transition: all 180ms ease;
+}
+
+.stMain [data-testid="stPills"] [data-baseweb="tag"]:hover {
+    border-color: #c9d9ff !important;
+    transform: translateY(-1px);
+}
+
+.stMain [data-testid="stPills"] [data-baseweb="tag"]:has(button[aria-pressed="true"]) {
+    border-color: rgba(99, 102, 241, 0.38) !important;
+    background: linear-gradient(180deg, rgba(37,99,235,0.09), rgba(109,93,251,0.10)) !important;
+    box-shadow: 0 10px 22px rgba(99,102,241,0.10);
+}
+
+.stMain [data-testid="stPills"] button {
+    color: #334155 !important;
+    font-weight: 700 !important;
+    border-radius: 14px !important;
+    padding: 0 12px !important;
+}
+
+.stMain [data-testid="stPills"] button[aria-pressed="true"] {
     color: var(--fv-violet) !important;
 }
 
@@ -3171,11 +3218,51 @@ html, body, [class*="css"] {
 }
 
 .fv-upload-section {
-    margin-top: 24px;
+    margin-top: 18px;
+}
+
+.fv-audit-brief-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 4px 0 22px;
+}
+
+.fv-brief-card {
+    padding: 16px 18px;
+    border-radius: 22px;
+    border: 1px solid #e4ebf6;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,249,255,0.95));
+    box-shadow: 0 16px 36px rgba(148,163,184,0.10);
+}
+
+.fv-brief-card small {
+    display: block;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.fv-brief-card b {
+    display: block;
+    margin-top: 10px;
+    color: var(--fv-text);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.fv-brief-card span {
+    display: block;
+    margin-top: 8px;
+    color: var(--fv-text-soft);
+    font-size: 0.9rem;
+    line-height: 1.55;
 }
 
 .fv-upload-bridge {
-    margin-top: 126px;
+    margin-top: 96px;
     display: flex;
     justify-content: center;
 }
@@ -3195,8 +3282,8 @@ html, body, [class*="css"] {
 
 .fv-upload-card {
     position: relative;
-    padding: 22px 20px 18px;
-    border-radius: 28px;
+    padding: 18px 18px 16px;
+    border-radius: 24px;
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,255,0.96));
     border: 1px solid #e4ebf6;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.94), 0 18px 42px rgba(148,163,184,0.10);
@@ -3206,10 +3293,10 @@ html, body, [class*="css"] {
 .fv-upload-card::before {
     content: "";
     position: absolute;
-    top: -48px;
+    top: -54px;
     right: -18px;
-    width: 150px;
-    height: 150px;
+    width: 124px;
+    height: 124px;
     border-radius: 999px;
     background: radial-gradient(circle, rgba(37,99,235,0.08), transparent 68%);
 }
@@ -3217,9 +3304,9 @@ html, body, [class*="css"] {
 .fv-upload-card::after {
     content: "";
     position: absolute;
-    inset: auto 20px 14px auto;
-    width: 140px;
-    height: 72px;
+    inset: auto 18px 12px auto;
+    width: 116px;
+    height: 60px;
     background:
         radial-gradient(circle at 20% 20%, rgba(148,163,184,0.16), transparent 58%),
         linear-gradient(135deg, rgba(226,232,240,0.55), rgba(255,255,255,0));
@@ -3228,16 +3315,23 @@ html, body, [class*="css"] {
     pointer-events: none;
 }
 
+.fv-upload-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
 .fv-upload-icon {
-    width: 54px;
-    height: 54px;
-    border-radius: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
     border: 1px solid rgba(148,163,184,0.14);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+    flex-shrink: 0;
 }
 
 .fv-upload-icon svg {
@@ -3249,24 +3343,30 @@ html, body, [class*="css"] {
 .fv-upload-icon.green { background: linear-gradient(180deg, rgba(16,185,129,0.14), rgba(56,189,248,0.10)); color: var(--fv-green); }
 
 .fv-upload-title {
-    font-size: 1.34rem;
+    font-size: 1.18rem;
     font-weight: 800;
     color: var(--fv-text);
 }
 
 .fv-upload-subtitle {
-    margin-top: 6px;
+    margin-top: 4px;
     color: var(--fv-text-soft);
-    font-size: 0.95rem;
-    line-height: 1.55;
+    font-size: 0.91rem;
+    line-height: 1.48;
+}
+
+.fv-upload-card [data-testid="stFileUploader"],
+.fv-upload-card [data-testid="stFileUploader"] > div {
+    background: transparent !important;
+    border: 0 !important;
 }
 
 .fv-upload-card [data-testid="stFileUploaderDropzone"] {
     position: relative;
-    min-height: 156px;
-    border-radius: 24px !important;
+    min-height: 126px;
+    border-radius: 20px !important;
     border: 1.6px dashed #d7e0f0 !important;
-    background: linear-gradient(180deg, rgba(248,250,255,0.88), rgba(255,255,255,0.95)) !important;
+    background: linear-gradient(180deg, rgba(248,250,255,0.88), rgba(255,255,255,0.98)) !important;
     transition: all 180ms ease;
     overflow: hidden;
 }
@@ -3278,25 +3378,26 @@ html, body, [class*="css"] {
 
 .fv-upload-card [data-testid="stFileUploaderDropzone"] > div {
     opacity: 0;
+    background: transparent !important;
 }
 
 .fv-upload-card [data-testid="stFileUploaderDropzone"]::before {
     content: "Arraste e solte o arquivo aqui";
     position: absolute;
-    inset: 46px 18px auto;
+    inset: 34px 18px auto;
     text-align: center;
     color: #334155;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.96rem;
 }
 
 .fv-upload-card [data-testid="stFileUploaderDropzone"]::after {
     content: "ou clique para selecionar";
     position: absolute;
-    inset: 78px 18px auto;
+    inset: 62px 18px auto;
     text-align: center;
     color: var(--fv-blue);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
@@ -3307,12 +3408,92 @@ html, body, [class*="css"] {
     height: 100% !important;
     opacity: 0 !important;
     z-index: 2;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+.fv-upload-card [data-testid="stFileUploaderFile"] {
+    border-radius: 16px !important;
+    border: 1px solid #dce5f4 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    color: var(--fv-text) !important;
+}
+
+.fv-upload-card [data-testid="stFileUploaderFile"] * {
+    background: transparent !important;
+    color: inherit !important;
+}
+
+.fv-upload-card [data-testid="stFileUploaderDeleteBtn"] {
+    background: #ffffff !important;
+    border: 1px solid #dce5f4 !important;
+    color: #475569 !important;
+}
+
+.stMain [data-testid="stFileUploader"],
+.stMain [data-testid="stFileUploader"] > div {
+    background: transparent !important;
+    border: 0 !important;
+}
+
+.stMain [data-testid="stFileUploaderDropzone"] {
+    position: relative !important;
+    min-height: 126px !important;
+    padding: 0 !important;
+    border-radius: 20px !important;
+    border: 1.6px dashed #d7e0f0 !important;
+    background: linear-gradient(180deg, rgba(248,250,255,0.88), rgba(255,255,255,0.98)) !important;
+    overflow: hidden !important;
+}
+
+.stMain [data-testid="stFileUploaderDropzone"]:hover {
+    border-color: rgba(99, 102, 241, 0.42) !important;
+    box-shadow: inset 0 0 0 1px rgba(99,102,241,0.14);
+}
+
+.stMain [data-testid="stFileUploaderDropzone"] > span,
+.stMain [data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderDropzoneInstructions"] {
+    display: none !important;
+}
+
+.stMain [data-testid="stFileUploaderDropzone"]::before {
+    content: "Arraste e solte o arquivo aqui";
+    position: absolute;
+    inset: 34px 18px auto;
+    text-align: center;
+    color: #334155;
+    font-weight: 700;
+    font-size: 0.96rem;
+    width: calc(100% - 36px);
+}
+
+.stMain [data-testid="stFileUploaderDropzone"]::after {
+    content: "ou clique para selecionar";
+    position: absolute;
+    inset: 62px 18px auto;
+    text-align: center;
+    color: var(--fv-blue);
+    font-size: 0.9rem;
+    font-weight: 600;
+    width: calc(100% - 36px);
+}
+
+.stMain [data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderDropzoneInput"] {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    clip: auto !important;
+    clip-path: none !important;
+    opacity: 0 !important;
 }
 
 .fv-file-ready {
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: 18px;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 16px;
     border: 1px solid #dce5f4;
     background: rgba(255,255,255,0.92);
     display: flex;
@@ -3332,8 +3513,8 @@ html, body, [class*="css"] {
 }
 
 .fv-upload-actions .stButton > button {
-    min-height: 42px;
-    border-radius: 16px;
+    min-height: 40px;
+    border-radius: 14px;
     border: 1px solid #dde6f3;
     background: rgba(255,255,255,0.92);
     color: #475569;
@@ -3350,29 +3531,29 @@ html, body, [class*="css"] {
 .fv-upload-foot {
     display: flex;
     justify-content: space-between;
-    gap: 14px;
-    margin-top: 14px;
+    gap: 10px;
+    margin-top: 12px;
     color: #94a3b8;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 600;
     flex-wrap: wrap;
 }
 
 .fv-primary-cta {
-    margin-top: 26px;
-    max-width: 520px;
+    margin-top: 20px;
+    max-width: 460px;
     margin-left: auto;
     margin-right: auto;
 }
 
 .fv-primary-cta .stButton > button[kind="primary"] {
-    min-height: 66px;
-    border-radius: 24px;
+    min-height: 58px;
+    border-radius: 20px;
     border: 1px solid rgba(109,93,251,0.22);
     background: linear-gradient(135deg, #2563eb 0%, #5b6dfb 55%, #7c3aed 100%);
     color: #fff;
     font-weight: 800;
-    font-size: 1.08rem;
+    font-size: 1rem;
     box-shadow: 0 22px 44px rgba(99, 102, 241, 0.30);
     transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
@@ -3389,18 +3570,18 @@ html, body, [class*="css"] {
 }
 
 .fv-primary-subtitle {
-    margin-top: 10px;
+    margin-top: 8px;
     text-align: center;
     color: #e0e7ff;
-    font-size: 0.93rem;
+    font-size: 0.9rem;
     font-weight: 600;
 }
 
 .fv-security-note {
-    margin-top: 14px;
+    margin-top: 10px;
     text-align: center;
     color: #94a3b8;
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -3409,11 +3590,11 @@ html, body, [class*="css"] {
 
 .fv-right-stack {
     display: grid;
-    gap: 18px;
+    gap: 14px;
 }
 
 .fv-insights-shell {
-    padding: 22px 20px;
+    padding: 18px 18px;
 }
 
 .fv-insights-title {
@@ -3433,16 +3614,16 @@ html, body, [class*="css"] {
 }
 
 .fv-insights-copy {
-    margin: 14px 0 16px;
+    margin: 12px 0 14px;
     color: var(--fv-text-soft);
     line-height: 1.6;
-    font-size: 0.94rem;
+    font-size: 0.92rem;
 }
 
 .fv-check-list {
     display: grid;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .fv-check-item {
@@ -3493,12 +3674,12 @@ html, body, [class*="css"] {
 
 .fv-recent-list {
     display: grid;
-    gap: 12px;
+    gap: 10px;
 }
 
 .fv-recent-item {
-    padding: 14px 14px 12px;
-    border-radius: 18px;
+    padding: 12px 12px 10px;
+    border-radius: 16px;
     background: rgba(248,250,255,0.88);
     border: 1px solid #e3ebf7;
 }
@@ -3549,12 +3730,12 @@ html, body, [class*="css"] {
 }
 
 .fv-tip-card {
-    padding: 16px 16px 14px;
-    border-radius: 20px;
+    padding: 14px 14px 12px;
+    border-radius: 18px;
     border: 1px solid #e3ebf7;
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,252,255,0.98));
     display: flex;
-    gap: 14px;
+    gap: 12px;
 }
 
 .fv-tip-card strong {
@@ -3576,7 +3757,7 @@ html, body, [class*="css"] {
 }
 
 .fv-page-card {
-    padding: 24px;
+    padding: 20px;
 }
 
 .fv-empty-state {
@@ -3590,6 +3771,45 @@ html, body, [class*="css"] {
 
 .fv-results-stack > * + * {
     margin-top: 18px;
+}
+
+.fv-summary-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.fv-summary-meta-card {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    background: rgba(248,250,255,0.92);
+}
+
+.fv-summary-meta-card small {
+    display: block;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.fv-summary-meta-card b {
+    display: block;
+    margin-top: 8px;
+    color: #0f172a;
+    font-size: 0.98rem;
+    font-weight: 800;
+}
+
+.fv-summary-meta-card span {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.45;
 }
 
 .fv-audit-shell .stAlert {
@@ -3609,15 +3829,101 @@ html, body, [class*="css"] {
 }
 
 @media (max-width: 1280px) {
-    .fv-kpi-grid {
+    .fv-kpi-grid,
+    .fv-audit-brief-grid,
+    .fv-summary-meta {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 1100px) {
     .fv-upload-bridge {
-        margin-top: 16px;
-        margin-bottom: 16px;
+        margin-top: 12px;
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-height: 820px) {
+    .block-container {
+        padding-top: 12px !important;
+        padding-bottom: 20px !important;
+    }
+    .fv-topbar-shell {
+        min-height: 54px;
+        padding: 8px 14px;
+    }
+    .fv-topbar-search-copy {
+        font-size: 0.9rem;
+    }
+    .fv-kpi-grid {
+        gap: 10px;
+        margin: 6px 0 8px;
+    }
+    .fv-kpi-card {
+        padding: 10px 12px;
+        border-radius: 18px;
+    }
+    .fv-kpi-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 14px;
+    }
+    .fv-kpi-copy small {
+        font-size: 0.78rem;
+    }
+    .fv-kpi-copy b {
+        margin-top: 4px;
+        font-size: 1.28rem;
+    }
+    .fv-kpi-copy span {
+        margin-top: 4px;
+        font-size: 0.76rem;
+    }
+    .fv-kpi-spark {
+        min-width: 66px;
+        display: none;
+    }
+    .fv-main-title {
+        font-size: 1.46rem;
+    }
+    .fv-main-subtitle {
+        font-size: 0.82rem;
+        line-height: 1.4;
+    }
+    .fv-upload-head {
+        margin-bottom: 6px;
+    }
+    .fv-upload-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+    }
+    .fv-upload-title {
+        font-size: 1rem;
+    }
+    .fv-upload-subtitle {
+        font-size: 0.82rem;
+        line-height: 1.38;
+    }
+    .stMain [data-testid="stFileUploaderDropzone"] {
+        min-height: 88px !important;
+    }
+    .stMain [data-testid="stFileUploaderDropzone"]::before {
+        inset: 16px 14px auto;
+        width: calc(100% - 28px);
+        font-size: 0.9rem;
+    }
+    .stMain [data-testid="stFileUploaderDropzone"]::after {
+        inset: 36px 14px auto;
+        width: calc(100% - 28px);
+        font-size: 0.84rem;
+    }
+    .fv-upload-foot {
+        display: none;
+    }
+    .fv-primary-subtitle,
+    .fv-security-note {
+        display: none;
     }
 }
 
@@ -3633,7 +3939,12 @@ html, body, [class*="css"] {
         justify-content: flex-start;
         flex-wrap: wrap;
     }
-    .fv-kpi-grid {
+    .fv-topbar-shell {
+        gap: 12px;
+    }
+    .fv-kpi-grid,
+    .fv-audit-brief-grid,
+    .fv-summary-meta {
         grid-template-columns: 1fr;
     }
     .fv-main-head {
@@ -3778,6 +4089,40 @@ def format_relative_history_label(value):
     return dt.strftime("%d/%m, %H:%M")
 
 
+def format_duration_label(seconds):
+    if seconds is None:
+        return "-"
+    try:
+        total_seconds = float(seconds)
+    except (TypeError, ValueError):
+        return "-"
+    if total_seconds < 1:
+        return f"{round(total_seconds * 1000):.0f} ms"
+    if total_seconds < 60:
+        return f"{total_seconds:.2f} s".replace(".", ",")
+    minutes, remainder = divmod(total_seconds, 60)
+    return f"{int(minutes)}m {remainder:04.1f}s".replace(".", ",")
+
+
+def build_session_audit_meta():
+    resumo = st.session_state.get("resumo") or {}
+    if not resumo:
+        return None
+
+    faltantes_total = int(resumo.get("faltantes_a", 0) or 0) + int(resumo.get("faltantes_b", 0) or 0)
+    return {
+        "runtime_raw": st.session_state.get("audit_runtime"),
+        "runtime_label": format_duration_label(st.session_state.get("audit_runtime")),
+        "tolerancia_label": br_money(st.session_state.get("tol", 0.50)),
+        "total": int(resumo.get("total", 0) or 0),
+        "divergentes": int(resumo.get("divergentes", 0) or 0),
+        "faltantes": faltantes_total,
+        "impacto_label": br_money(resumo.get("impacto_absoluto", 0) or 0),
+        "arquivo_a": str(st.session_state.get("nome_a", "ATUA")),
+        "arquivo_b": str(st.session_state.get("nome_b", "GW")),
+    }
+
+
 def build_recent_audits():
     history = auditoria_io.carregar_historico()
     items = []
@@ -3799,19 +4144,18 @@ def build_recent_audits():
 def build_dashboard_kpis():
     history = auditoria_io.carregar_historico()
     today_prefix = datetime.now().strftime("%d/%m/%Y")
-    today_count = sum(1 for item in history if str(item.get("data_hora", "")).startswith(today_prefix)) or 12
+    today_count = sum(1 for item in history if str(item.get("data_hora", "")).startswith(today_prefix))
+    session_meta = build_session_audit_meta()
     current_summary = st.session_state.get("resumo") or {}
     divergences = int(current_summary.get("divergentes", 0) or 0)
-    if divergences <= 0:
-        divergences = 8
-    recovery_value = current_summary.get("impacto_absoluto", 0) or 0
-    if float(recovery_value or 0) <= 0:
-        recovery_value = 24560.75
+    latest_history = history[0] if history else {}
+    impact_value = current_summary.get("impacto_absoluto", 0) or latest_history.get("impacto_absoluto", 0) or 0
+    runtime_label = session_meta["runtime_label"] if session_meta else "Aguardando"
     return [
         {
             "label": "Auditorias hoje",
             "value": str(today_count),
-            "delta": "+20% vs ontem",
+            "delta": f"{len(history)} salvas no histÃ³rico" if history else "Nenhuma salva ainda",
             "tone": "blue",
             "icon": svg_icon("spark", 20),
             "spark": sparkline_svg("#5b6dfb", [32, 18, 70, 28, 34, 30, 33, 75, 70, 90]),
@@ -3820,16 +4164,16 @@ def build_dashboard_kpis():
         {
             "label": "Divergências",
             "value": str(divergences),
-            "delta": "+12% vs ontem",
+            "delta": "SessÃ£o atual" if session_meta else "Aguardando comparaÃ§Ã£o",
             "tone": "red",
             "icon": svg_icon("alert", 20),
             "spark": sparkline_svg("#f43f5e", [84, 75, 66, 52, 57, 33, 25, 44, 52, 48]),
             "delta_class": "red",
         },
         {
-            "label": "Economia recuperada",
-            "value": br_money(recovery_value),
-            "delta": "+18% vs ontem",
+            "label": "Impacto crÃ­tico",
+            "value": br_money(impact_value),
+            "delta": "SessÃ£o atual" if session_meta else "Ãšltima auditoria salva",
             "tone": "green",
             "icon": svg_icon("dollar", 20),
             "spark": sparkline_svg("#10b981", [22, 38, 34, 56, 61, 49, 63, 54, 78, 86]),
@@ -3837,8 +4181,8 @@ def build_dashboard_kpis():
         },
         {
             "label": "Tempo médio",
-            "value": "18m 42s",
-            "delta": "-8% vs ontem",
+            "value": runtime_label,
+            "delta": "Ãšltima auditoria" if session_meta else "Sem execuÃ§Ã£o nesta sessÃ£o",
             "tone": "blue",
             "icon": svg_icon("clock", 20),
             "spark": sparkline_svg("#2563eb", [64, 48, 18, 56, 82, 42, 36, 48, 30, 32]),
@@ -5608,10 +5952,12 @@ def render_upload_box(title, description, key, tone=None):
         st.markdown(
             f"""
             <div class="fv-upload-card">
-                <div class="fv-upload-icon {safe_text(tone)}">{icon_doc(22)}</div>
-                <div>
-                    <div class="fv-upload-title">{safe_text(title)}</div>
-                    <div class="fv-upload-subtitle">{safe_text(description)}</div>
+                <div class="fv-upload-head">
+                    <div class="fv-upload-icon {safe_text(tone)}">{icon_doc(22)}</div>
+                    <div>
+                        <div class="fv-upload-title">{safe_text(title)}</div>
+                        <div class="fv-upload-subtitle">{safe_text(description)}</div>
+                    </div>
                 </div>
             """,
             unsafe_allow_html=True,
@@ -6110,6 +6456,208 @@ def render_empty_state(title, description):
     )
 
 
+def reset_audit_state():
+    cleanup_session_temp_files()
+    for key in ["df_res", "resumo", "nome_a", "nome_b", "tol", "audit_debug", "audit_runtime", "audit_timings"]:
+        st.session_state.pop(key, None)
+
+
+def build_dashboard_kpis():
+    history = auditoria_io.carregar_historico()
+    today_prefix = datetime.now().strftime("%d/%m/%Y")
+    today_count = sum(1 for item in history if str(item.get("data_hora", "")).startswith(today_prefix))
+    session_meta = build_session_audit_meta()
+    current_summary = st.session_state.get("resumo") or {}
+    divergences = int(current_summary.get("divergentes", 0) or 0)
+    latest_history = history[0] if history else {}
+    impact_value = current_summary.get("impacto_absoluto", 0) or latest_history.get("impacto_absoluto", 0) or 0
+    runtime_label = session_meta["runtime_label"] if session_meta else "Aguardando"
+    return [
+        {
+            "label": "Auditorias hoje",
+            "value": str(today_count),
+            "delta": f"{len(history)} salvas no hist\u00f3rico" if history else "Nenhuma salva ainda",
+            "tone": "blue",
+            "icon": svg_icon("spark", 20),
+            "spark": sparkline_svg("#5b6dfb", [32, 18, 70, 28, 34, 30, 33, 75, 70, 90]),
+            "delta_class": "blue",
+        },
+        {
+            "label": "Diverg\u00eancias",
+            "value": str(divergences),
+            "delta": "Sess\u00e3o atual" if session_meta else "Aguardando compara\u00e7\u00e3o",
+            "tone": "red",
+            "icon": svg_icon("alert", 20),
+            "spark": sparkline_svg("#f43f5e", [84, 75, 66, 52, 57, 33, 25, 44, 52, 48]),
+            "delta_class": "red",
+        },
+        {
+            "label": "Impacto cr\u00edtico",
+            "value": br_money(impact_value),
+            "delta": "Sess\u00e3o atual" if session_meta else "\u00daltima auditoria salva",
+            "tone": "green",
+            "icon": svg_icon("dollar", 20),
+            "spark": sparkline_svg("#10b981", [22, 38, 34, 56, 61, 49, 63, 54, 78, 86]),
+            "delta_class": "",
+        },
+        {
+            "label": "Tempo da auditoria",
+            "value": runtime_label,
+            "delta": "\u00daltima auditoria" if session_meta else "Sem execu\u00e7\u00e3o nesta sess\u00e3o",
+            "tone": "blue",
+            "icon": svg_icon("clock", 20),
+            "spark": sparkline_svg("#2563eb", [64, 48, 18, 56, 82, 42, 36, 48, 30, 32]),
+            "delta_class": "",
+        },
+    ]
+
+
+def render_audit_context_strip():
+    session_meta = build_session_audit_meta()
+    tolerance_label = br_money(st.session_state.get("tol", 0.50))
+    speed_value = session_meta["runtime_label"] if session_meta else "Leitura r\u00e1pida"
+    speed_caption = (
+        f"\u00daltima auditoria conclu\u00edda em {session_meta['runtime_label']}."
+        if session_meta and session_meta["runtime_raw"] is not None
+        else "Upload, leitura, cruzamento e relat\u00f3rio em uma \u00fanica rodada."
+    )
+    cards = [
+        ("Compara\u00e7\u00e3o", "ATUA x GW", "Use relat\u00f3rios do mesmo per\u00edodo para evitar falsos faltantes."),
+        ("Toler\u00e2ncia ativa", tolerance_label, "Diferen\u00e7as abaixo desse valor seguem vis\u00edveis, mas n\u00e3o entram no impacto cr\u00edtico."),
+        ("Velocidade", speed_value, speed_caption),
+        ("Sa\u00eddas prontas", "CSV, Excel e 2 PDFs", "Confer\u00eancia detalhada e vers\u00e3o executiva liberadas no mesmo fluxo."),
+    ]
+    cards_html = "".join(
+        f'<div class="fv-brief-card"><small>{safe_text(label)}</small><b>{safe_text(value)}</b><span>{safe_text(caption)}</span></div>'
+        for label, value, caption in cards
+    )
+    st.markdown(f'<div class="fv-audit-brief-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+
+def render_upload_section():
+    st.markdown('<div class="fv-upload-section">', unsafe_allow_html=True)
+    col_a, bridge_col, col_b = st.columns([1, 0.16, 1], gap="medium")
+    with col_a:
+        file_a = render_upload_box("Sistema A (ATUA)", "Upload do relat\u00f3rio principal da empresa.", "up_a", "violet")
+    with bridge_col:
+        st.markdown(
+            f'<div class="fv-upload-bridge"><div class="fv-upload-bridge-node">{svg_icon("compare", 22)}</div></div>',
+            unsafe_allow_html=True,
+        )
+    with col_b:
+        file_b = render_upload_box("Sistema B (GW)", "Upload do relat\u00f3rio de confer\u00eancia.", "up_b")
+    st.markdown("</div>", unsafe_allow_html=True)
+    return file_a, file_b
+
+
+def render_kpis(resumo, df):
+    faltantes_total = int(resumo["faltantes_a"]) + int(resumo["faltantes_b"])
+    tolerance_text = br_money(st.session_state.get("tol", 0.50))
+    runtime_label = format_duration_label(st.session_state.get("audit_runtime"))
+    summary_html = (
+        '<div class="section-head" style="margin-top:10px;">'
+        '<h3 class="section-title">Resumo da auditoria</h3>'
+        '<div class="section-subtitle">Resultado direto da compara\u00e7\u00e3o entre os dois relat\u00f3rios processados.</div>'
+        '</div>'
+        '<div class="summary-grid">'
+        f'<div class="summary-card"><small>Total analisado</small><b>{safe_text(resumo["total"])}</b><span>Toler\u00e2ncia: {safe_text(tolerance_text)}</span></div>'
+        f'<div class="summary-card ok"><small>OK</small><b>{safe_text(resumo["ok"])}</b><span>Sem diferen\u00e7a identificada</span></div>'
+        f'<div class="summary-card round"><small>OK Arred.</small><b>{safe_text(resumo["ok_arredondamento"])}</b><span>Diferen\u00e7as dentro da toler\u00e2ncia</span></div>'
+        f'<div class="summary-card div"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b><span>Acima da toler\u00e2ncia configurada</span></div>'
+        f'<div class="summary-card miss"><small>Faltantes</small><b>{safe_text(faltantes_total)}</b><span>No A: {safe_text(resumo["faltantes_a"])} • No B: {safe_text(resumo["faltantes_b"])}</span></div>'
+        f'<div class="summary-card impact"><small>Impacto cr\u00edtico total</small><b>{safe_text(br_money(resumo["impacto_absoluto"]))}</b><span>N\u00e3o inclui OK por arredondamento</span></div>'
+        '</div>'
+        '<div class="summary-note">Diferen\u00e7as dentro da toler\u00e2ncia continuam vis\u00edveis para confer\u00eancia na tabela, mas n\u00e3o comp\u00f5em o impacto cr\u00edtico.</div>'
+    )
+    meta_cards = [
+        ("Tempo total", runtime_label, "Execucao completa da ultima auditoria."),
+        ("Leitura e cruzamento", format_duration_label((st.session_state.get("audit_timings") or {}).get("Leitura e cruzamento")), "Etapa principal de validacao dos CTEs."),
+        ("Arquivos comparados", f'{safe_text(st.session_state.get("nome_a", "ATUA"))} x {safe_text(st.session_state.get("nome_b", "GW"))}', "Base operacional usada nesta sessao."),
+        ("Exportacoes", "4 formatos liberados", "CSV, Excel, PDF executivo e PDF detalhado."),
+    ]
+    meta_html = "".join(
+        f'<div class="fv-summary-meta-card"><small>{label}</small><b>{value}</b><span>{caption}</span></div>'
+        for label, value, caption in meta_cards
+    )
+    st.markdown(summary_html + f'<div class="fv-summary-meta">{meta_html}</div>', unsafe_allow_html=True)
+
+
+def render_insights_panel():
+    session_meta = build_session_audit_meta()
+    title = "Insights autom\u00e1ticos"
+    if session_meta:
+        copy = (
+            f'\u00daltima auditoria conclu\u00edda em <b>{safe_text(session_meta["runtime_label"])}</b> '
+            f'com <b>{safe_text(session_meta["total"])}</b> CTEs comparados.'
+        )
+        insights = [
+            f'{session_meta["total"]} CTEs cruzados entre ATUA e GW',
+            f'{session_meta["divergentes"]} diverg\u00eancias acima da toler\u00e2ncia',
+            f'{session_meta["faltantes"]} faltantes entre os relat\u00f3rios',
+            f'Impacto cr\u00edtico atual: {session_meta["impacto_label"]}',
+            "Exporta\u00e7\u00f5es prontas para confer\u00eancia e apresenta\u00e7\u00e3o",
+        ]
+        tip_title = "\u00daltima compara\u00e7\u00e3o"
+        tip_copy = f'{session_meta["arquivo_a"]} x {session_meta["arquivo_b"]}'
+    else:
+        copy = "Ao enviar os relat\u00f3rios, o motor vai:"
+        insights = [
+            "Comparar valores e identificar diverg\u00eancias",
+            "Detectar cobran\u00e7as indevidas",
+            "Validar regras e pol\u00edticas aplicadas",
+            "Gerar relat\u00f3rio detalhado",
+            "Liberar CSV, Excel e PDFs no mesmo fluxo",
+        ]
+        tip_title = "Dica"
+        tip_copy = "Mantenha os relat\u00f3rios do mesmo per\u00edodo para an\u00e1lises mais precisas."
+
+    recent_items = build_recent_audits()
+    checklist_html = "".join(
+        f'<div class="fv-check-item"><span class="fv-check-badge">{svg_icon("check", 14)}</span><span>{safe_text(item)}</span></div>'
+        for item in insights
+    )
+    recent_html = []
+    for item in recent_items:
+        status = str(item.get("status", "Concluida"))
+        status_class = "running" if "anal" in ui(status).lower() else "complete"
+        recent_html.append(
+            f'<div class="fv-recent-item"><div class="fv-recent-top"><div><div class="fv-recent-code">{safe_text(item.get("codigo", "AUD-2026-00000"))}</div>'
+            f'<div class="fv-recent-time">{safe_text(item.get("momento", "Hoje, 09:32"))}</div></div>'
+            f'<div class="fv-status-tag {status_class}">{safe_text(status)}</div></div>'
+            f'<div class="fv-recent-value">Valor: {safe_text(item.get("valor", "-"))}</div></div>'
+        )
+
+    st.markdown(
+        f"""
+        <div class="fv-right-stack fv-sticky">
+            <div class="fv-surface-card fv-insights-shell">
+                <div class="fv-insights-title">
+                    <span>{svg_icon("spark", 18)}{safe_text(title)}</span>
+                    <span>{safe_text(format_duration_label(st.session_state.get("audit_runtime")) if session_meta else "Pronto")}</span>
+                </div>
+                <div class="fv-insights-copy">{copy}</div>
+                <div class="fv-check-list">{checklist_html}</div>
+                <div class="fv-panel-divider"></div>
+                <div class="fv-latest-head">
+                    <b>Ultimas auditorias</b>
+                    <span class="fv-link">Ver todas</span>
+                </div>
+                <div class="fv-recent-list">{"".join(recent_html)}</div>
+                <div class="fv-panel-divider"></div>
+                <div class="fv-tip-card">
+                    <div class="fv-check-badge">{svg_icon("bulb", 14)}</div>
+                    <div>
+                        <strong>{safe_text(tip_title)}</strong>
+                        <span>{safe_text(tip_copy)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_nova_auditoria_page():
     if "processing" not in st.session_state:
         st.session_state.processing = False
@@ -6120,7 +6668,6 @@ def render_nova_auditoria_page():
     if "audit_debug" not in st.session_state:
         st.session_state.audit_debug = None
 
-    st.markdown('<div class="fv-surface-card fv-audit-shell">', unsafe_allow_html=True)
     head_left, head_right = st.columns([6.5, 1.7], gap="medium")
     with head_left:
         st.markdown(
@@ -6141,7 +6688,7 @@ def render_nova_auditoria_page():
         )
     with head_right:
         st.markdown('<div class="fv-main-head-actions">', unsafe_allow_html=True)
-        if st.button("Limpar formulário", key="clear_workspace", use_container_width=True, icon=":material/refresh:"):
+        if st.button("Limpar", key="clear_workspace", use_container_width=True, icon=":material/refresh:"):
             clear_audit_workspace()
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -6165,7 +6712,6 @@ def render_nova_auditoria_page():
 
     status_box = st.empty()
     debug_box = st.empty()
-    st.markdown("</div>", unsafe_allow_html=True)
     results_box = st.empty()
 
     if st.session_state.get("audit_debug"):
@@ -6220,7 +6766,9 @@ def render_nova_auditoria_page():
             result_df = linhas_para_dataframe(resultado["linhas"])
             result_df = aplicar_margens_gw_visual(result_df, caminho_b)
             result_df = ensure_gw_margin_visual(result_df, caminho_b)
-            summary = normalizar_resumo_motor(resultado["resumo"])
+            summary_motor = normalizar_resumo_motor(resultado["resumo"])
+            summary_df = auditoria_io.gerar_resumo_df(result_df)
+            summary = {**summary_motor, **summary_df}
             timings["Pós-processamento"] = perf_counter() - step_started_at
 
             set_audit_debug(
@@ -6257,6 +6805,8 @@ def render_nova_auditoria_page():
                     "nome_a": get_upload_name(file_a),
                     "nome_b": get_upload_name(file_b),
                     "tol": tolerance,
+                    "audit_runtime": timings.get("Total"),
+                    "audit_timings": dict(timings),
                     "caminho_a_temp": caminho_a,
                     "caminho_b_temp": caminho_b,
                 }
@@ -6334,7 +6884,7 @@ def render_page_content(current_page):
 def render_dashboard_shell():
     current_page = render_compact_menu()
     st.markdown('<div class="fv-shell-root">', unsafe_allow_html=True)
-    shell_left, shell_rest = st.columns([1.05, 4.55], gap="large")
+    shell_left, shell_rest = st.columns([0.92, 5.08], gap="medium")
 
     with shell_left:
         st.markdown('<div class="fv-shell-left">', unsafe_allow_html=True)
@@ -6345,7 +6895,7 @@ def render_dashboard_shell():
         st.markdown('<div class="fv-shell-main">', unsafe_allow_html=True)
         render_app_header()
         render_dashboard_kpi_row()
-        main_col, right_col = st.columns([3.1, 1.2], gap="large")
+        main_col, right_col = st.columns([3.7, 1.1], gap="medium")
         with main_col:
             render_page_content(current_page)
         with right_col:
