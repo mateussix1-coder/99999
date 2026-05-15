@@ -1,6 +1,8 @@
 __pycache__/
 *.py[cod]
-.pytest_cache/
+.pypytest_cache/
 .codex-test-venv/
 .env
 .venv/
+
+# Parser deploy marker: 2026-05-15
