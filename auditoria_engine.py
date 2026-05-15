@@ -126,6 +126,7 @@ def _is_money_line(value: str) -> bool:
     return parse_money_br(value) is not None if value else False
 
 
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
 def _normalizar_cte_pr(value) -> Optional[str]:
     if value is None:
         return None
@@ -135,6 +136,8 @@ def _normalizar_cte_pr(value) -> Optional[str]:
     return str(int(text))
 
 
+
+ main
 def _selecionar_valores_gw(valores: List[Decimal]) -> tuple[Optional[Decimal], Optional[Decimal]]:
     nao_zero = [valor for valor in valores if valor != Decimal("0.00")]
     if len(nao_zero) >= 2:
@@ -321,7 +324,11 @@ def _extrair_atua_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
         if not linha.isdigit() or prox != "CT":
             continue
 
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
         cte = _normalizar_cte_pr(linha)
+
+        cte = normalizar_cte(linha.zfill(4))
+ main
         if not cte:
             ignorados += 1
             continue
@@ -353,6 +360,7 @@ def _extrair_atua_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
 def _detectar_atua_pr_multilinha(linhas_pdf) -> bool:
     for idx in range(len(linhas_pdf) - 1):
         linha = linhas_pdf[idx][1]
@@ -362,6 +370,8 @@ def _detectar_atua_pr_multilinha(linhas_pdf) -> bool:
     return False
 
 
+
+ main
 def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
@@ -373,6 +383,7 @@ def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     if registros:
         LAST_PARSE_INFO["atual"] = {"formato": "ATUA multilinha legado", "ctes": len(registros)}
         return registros
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
     texto_total = " ".join(l for _, l in linhas_pdf[:500])
     tem_header_pr = "Relatorio Detalhado do CTRC" in texto_total or "Relatório Detalhado do CTRC" in texto_total
     if tem_header_pr or _detectar_atua_pr_multilinha(linhas_pdf):
@@ -380,6 +391,14 @@ def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
         LAST_PARSE_INFO["atual"] = {"formato": "ATUA PR multilinha", "ctes": len(registros)}
         return registros
     LAST_PARSE_INFO["atual"] = {"formato": "ATUA desconhecido", "ctes": 0}
+
+    registros = _extrair_atua_multilinha(linhas_pdf)
+    if registros:
+        return registros
+    texto_total = " ".join(l for _, l in linhas_pdf[:200])
+    if "Relatorio Detalhado do CTRC" in texto_total:
+        return _extrair_atua_pr_multilinha(linhas_pdf)
+ main
     return {}
 
 
@@ -509,6 +528,7 @@ def _extrair_gw_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
 def _detectar_gw_pr_multilinha(linhas_pdf) -> bool:
     for i, (_, linha) in enumerate(linhas_pdf):
         if not RE_CTE_PR_GW.fullmatch(linha):
@@ -520,6 +540,8 @@ def _detectar_gw_pr_multilinha(linhas_pdf) -> bool:
     return False
 
 
+
+ main
 def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
@@ -537,7 +559,16 @@ def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
         registros = _extrair_gw_pr_multilinha(linhas_pdf)
         LAST_PARSE_INFO["gw"] = {"formato": "GW PR multilinha", "ctes": len(registros)}
         return registros
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
     LAST_PARSE_INFO["gw"] = {"formato": "GW desconhecido", "ctes": 0}
+
+    registros = _extrair_gw_multilinha(linhas_pdf)
+    if registros:
+        return registros
+    texto_total = " ".join(l for _, l in linhas_pdf[:250])
+    if "Analise de CTe/NFS com impostos" in texto_total:
+        return _extrair_gw_pr_multilinha(linhas_pdf)
+ main
     return {}
 
 
@@ -758,12 +789,18 @@ def gerar_debug(registros_a, registros_b):
         return [registros[c][campo] for c in ctes]
 
     return {
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
         "ATUA - Formato detectado": LAST_PARSE_INFO["atual"]["formato"],
+
+ main
         "ATUA - Quantidade CTEs": len(registros_a),
         "ATUA - Primeiros 10 CTEs": top_chaves(registros_a),
         "ATUA - Primeiros 10 Empresa A": top_valores(registros_a, "empresa"),
         "ATUA - Primeiros 10 Motorista A": top_valores(registros_a, "motorista"),
+ codex/fix-pdf-parser-for-pr-format-jdo0j0
         "GW - Formato detectado": LAST_PARSE_INFO["gw"]["formato"],
+
+ main
         "GW - Quantidade CTEs": len(registros_b),
         "GW - Primeiros 10 CTEs": top_chaves(registros_b),
         "GW - Primeiros 10 Empresa B": top_valores(registros_b, "empresa"),
