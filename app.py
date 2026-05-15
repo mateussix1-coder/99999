@@ -2,10 +2,9 @@ import html
 import tempfile
 import re
 from collections import defaultdict
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from time import perf_counter, time
+from time import perf_counter
 
 import pandas as pd
 import plotly.express as px
@@ -60,25 +59,6 @@ PROCESSING_STEPS = [
 ]
 MAX_UPLOAD_SIZE_BYTES = 20 * 1024 * 1024
 PDF_HEADER_SCAN_BYTES = 1024
-TEMP_UPLOAD_DIR = Path(tempfile.gettempdir()) / "fretescan_uploads"
-TEMP_UPLOAD_MAX_AGE_SECONDS = 24 * 60 * 60
-NAV_ITEMS = [
-    ("nova_auditoria", "Nova Auditoria", ":material/add_circle:"),
-    ("visao_geral", "Visão geral", ":material/dashboard_customize:"),
-    ("auditorias", "Auditorias", ":material/folder_open:"),
-    ("relatorios", "Relatórios", ":material/description:"),
-    ("divergencias", "Divergências", ":material/warning:"),
-    ("economia", "Economia", ":material/savings:"),
-    ("integracoes", "Integrações", ":material/hub:"),
-    ("configuracoes", "Configurações", ":material/settings:"),
-    ("suporte", "Suporte", ":material/support_agent:"),
-]
-RECENT_AUDIT_FALLBACK = [
-    {"codigo": "AUD-2026-00012", "momento": "Hoje, 09:32", "status": "Concluída", "valor": "R$ 2.450,75"},
-    {"codigo": "AUD-2026-00011", "momento": "Hoje, 08:11", "status": "Em análise", "valor": "—"},
-    {"codigo": "AUD-2026-00010", "momento": "Ontem, 17:45", "status": "Concluída", "valor": "R$ 1.128,40"},
-    {"codigo": "AUD-2026-00009", "momento": "Ontem, 15:20", "status": "Concluída", "valor": "R$ 890,10"},
-]
 
 
 st.set_page_config(page_title=BRAND_NAME, layout="wide", initial_sidebar_state="collapsed")
@@ -1720,47 +1700,6 @@ div[data-testid="stProgressBar"] > div > div {
     .fv-wordmark-main { letter-spacing: 0.14em; }
     .processing-grid { grid-template-columns: 1fr; }
 }
-.processing-stage-dot {
-    animation: pulseDot 1.2s ease-in-out infinite;
-}
-
-.processing-title::after {
-    content: "";
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    margin-left: 8px;
-    border-radius: 50%;
-    border: 2px solid #93c5fd;
-    border-top-color: #1d4ed8;
-    animation: spinLoader 0.8s linear infinite;
-    vertical-align: -2px;
-}
-
-.audit-results-shell {
-    touch-action: pan-x pan-y;
-    -webkit-overflow-scrolling: touch;
-}
-
-@keyframes spinLoader {
-    to { transform: rotate(360deg); }
-}
-
-@keyframes pulseDot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.35); opacity: 0.45; }
-}
-
-@media (max-width: 900px) {
-    .stApp {
-        background: #f4f0e7 !important;
-    }
-    .panel, .summary-card, .processing-shell, .compact-header, [data-testid="stSidebar"] {
-        box-shadow: none !important;
-        backdrop-filter: none !important;
-    }
-}
-
 </style>
 """
 
@@ -2558,1412 +2497,10 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
         bottom: 18px;
     }
 }
-.processing-stage-dot {
-    animation: pulseDot 1.2s ease-in-out infinite;
-}
-
-.processing-title::after {
-    content: "";
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    margin-left: 8px;
-    border-radius: 50%;
-    border: 2px solid #93c5fd;
-    border-top-color: #1d4ed8;
-    animation: spinLoader 0.8s linear infinite;
-    vertical-align: -2px;
-}
-
-.audit-results-shell {
-    touch-action: pan-x pan-y;
-    -webkit-overflow-scrolling: touch;
-}
-
-@keyframes spinLoader {
-    to { transform: rotate(360deg); }
-}
-
-@keyframes pulseDot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.35); opacity: 0.45; }
-}
-
-@media (max-width: 900px) {
-    .stApp {
-        background: #f4f0e7 !important;
-    }
-    .panel, .summary-card, .processing-shell, .compact-header, [data-testid="stSidebar"] {
-        box-shadow: none !important;
-        backdrop-filter: none !important;
-    }
-}
-
 </style>
 """
 
 st.markdown(COMPACT_CSS, unsafe_allow_html=True)
-
-
-DASHBOARD_CSS = """
-<style>
-:root {
-    --fv-bg: #f6f8fc;
-    --fv-surface: rgba(255, 255, 255, 0.94);
-    --fv-surface-strong: #ffffff;
-    --fv-line: #e2e8f0;
-    --fv-line-strong: #d8e2f2;
-    --fv-text: #0f172a;
-    --fv-text-soft: #64748b;
-    --fv-blue: #2563eb;
-    --fv-violet: #6d5dfb;
-    --fv-cyan: #38bdf8;
-    --fv-green: #10b981;
-    --fv-red: #f43f5e;
-    --fv-yellow: #f59e0b;
-    --fv-shadow: 0 18px 56px rgba(15, 23, 42, 0.08);
-    --fv-shadow-soft: 0 10px 32px rgba(59, 130, 246, 0.08);
-}
-
-html, body, [class*="css"] {
-    font-family: Inter, "Plus Jakarta Sans", "Segoe UI", sans-serif !important;
-    color: var(--fv-text) !important;
-}
-
-.stApp {
-    background:
-        radial-gradient(circle at 10% 12%, rgba(109, 93, 251, 0.10), transparent 24%),
-        radial-gradient(circle at 92% 8%, rgba(56, 189, 248, 0.12), transparent 20%),
-        radial-gradient(circle at 82% 88%, rgba(37, 99, 235, 0.08), transparent 18%),
-        linear-gradient(180deg, #fbfcff 0%, #f6f8fc 50%, #f3f7fd 100%) !important;
-}
-
-.fv-shell-root {
-    width: min(100%, 1760px);
-    margin: 0 auto;
-}
-
-.block-container {
-    padding: 16px 20px 28px !important;
-}
-
-@keyframes fvFadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(18px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fvFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-}
-
-.fv-shell-main,
-.fv-shell-left,
-.fv-shell-right {
-    animation: fvFadeUp 0.45s ease both;
-}
-
-.fv-sticky {
-    position: sticky;
-    top: 16px;
-}
-
-.fv-surface-card {
-    position: relative;
-    overflow: hidden;
-    background: var(--fv-surface);
-    border: 1px solid var(--fv-line);
-    border-radius: 24px;
-    box-shadow: var(--fv-shadow);
-    backdrop-filter: blur(14px);
-}
-
-.fv-shell-left .fv-surface-card,
-.fv-shell-right .fv-surface-card {
-    background: rgba(255, 255, 255, 0.9);
-}
-
-.fv-sidebar-shell {
-    padding: 20px 18px 16px;
-}
-
-.fv-brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 22px;
-}
-
-.fv-brand-mark {
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
-    background: linear-gradient(145deg, rgba(37, 99, 235, 0.10), rgba(109, 93, 251, 0.18));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
-
-.fv-brand-mark svg {
-    width: 42px;
-    height: 42px;
-}
-
-.fv-brand-name {
-    font-size: 1.28rem;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-}
-
-.fv-brand-name span:first-child {
-    color: #0f172a;
-}
-
-.fv-brand-name strong {
-    color: var(--fv-blue);
-}
-
-.fv-brand-tagline {
-    margin-top: 5px;
-    color: var(--fv-text-soft);
-    font-size: 0.92rem;
-    font-weight: 500;
-}
-
-.fv-sidebar-nav {
-    display: block;
-    margin-bottom: 22px;
-}
-
-.fv-sidebar-nav .stButton > button {
-    min-height: 46px;
-    border-radius: 16px;
-    border: 1px solid transparent;
-    justify-content: flex-start;
-    padding: 0 14px;
-    font-weight: 600;
-    color: #334155;
-    background: transparent;
-    box-shadow: none;
-    transition: all 180ms ease;
-}
-
-.fv-sidebar-nav .stButton > button:hover {
-    border-color: #dbe7ff;
-    background: rgba(255, 255, 255, 0.82);
-    color: #0f172a;
-    transform: translateY(-1px);
-}
-
-.fv-sidebar-nav .stButton > button[kind="primary"] {
-    background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(109, 93, 251, 0.10));
-    border-color: rgba(99, 102, 241, 0.18);
-    color: var(--fv-blue);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.72), 0 8px 18px rgba(59,130,246,0.08);
-}
-
-.fv-sidebar-nav .stButton > button p {
-    font-size: 0.98rem !important;
-}
-
-.fv-plan-card {
-    padding: 16px 16px 14px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,255,0.98));
-    border: 1px solid #dfe7f5;
-    border-radius: 20px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
-}
-
-.fv-plan-kicker {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--fv-violet);
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.fv-plan-copy {
-    margin: 10px 0 16px;
-    color: var(--fv-text-soft);
-    font-size: 0.92rem;
-    line-height: 1.55;
-}
-
-.fv-plan-card-wrap .stButton > button {
-    min-height: 42px;
-    border-radius: 16px;
-    border: 1px solid #d7def2;
-    color: var(--fv-blue);
-    background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
-    font-weight: 700;
-    transition: all 180ms ease;
-}
-
-.fv-plan-card-wrap .stButton > button:hover {
-    border-color: #bfd0ff;
-    transform: translateY(-1px);
-}
-
-.fv-sidebar-footer {
-    margin-top: 18px;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.82rem;
-    line-height: 1.65;
-}
-
-.fv-topbar-shell {
-    padding: 14px 18px;
-    min-height: 74px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-}
-
-.fv-topbar-search {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-}
-
-.fv-topbar-search-copy {
-    flex: 1;
-    color: #94a3b8;
-    font-size: 0.98rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.fv-topbar-search-icon {
-    width: 22px;
-    height: 22px;
-    color: #94a3b8;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.fv-kbd {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 6px 10px;
-    color: #64748b;
-    font-size: 0.82rem;
-    font-weight: 700;
-    background: #f8fbff;
-}
-
-.fv-topbar-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    flex-shrink: 0;
-}
-
-.fv-bell {
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    color: #475569;
-}
-
-.fv-bell-badge {
-    position: absolute;
-    top: -3px;
-    right: -2px;
-    min-width: 19px;
-    height: 19px;
-    border-radius: 999px;
-    background: var(--fv-blue);
-    color: #fff;
-    font-size: 0.7rem;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.fv-status-pill {
-    height: 40px;
-    padding: 0 16px;
-    border-radius: 14px;
-    border: 1px solid #dfe8f6;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: #0f172a;
-    font-weight: 700;
-}
-
-.fv-status-pill span:first-child {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    background: var(--fv-green);
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12);
-}
-
-.fv-user-chip {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: 2px;
-}
-
-.fv-user-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 16px;
-    background: linear-gradient(145deg, #dbeafe, #eef2ff);
-    color: #1e3a8a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
-}
-
-.fv-user-meta strong {
-    display: block;
-    font-size: 0.98rem;
-    color: var(--fv-text);
-}
-
-.fv-user-meta span {
-    color: var(--fv-text-soft);
-    font-size: 0.86rem;
-}
-
-.fv-topbar-caret {
-    color: #94a3b8;
-    font-weight: 800;
-    font-size: 1rem;
-}
-
-.fv-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-    margin: 14px 0 16px;
-}
-
-.fv-kpi-card {
-    position: relative;
-    padding: 16px 16px 14px;
-    border-radius: 22px;
-    background: rgba(255,255,255,0.95);
-    border: 1px solid #e3eaf5;
-    box-shadow: var(--fv-shadow-soft);
-    overflow: hidden;
-    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-    animation: fvFadeUp 0.45s ease both;
-}
-
-.fv-kpi-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(99, 102, 241, 0.26);
-    box-shadow: 0 20px 42px rgba(37, 99, 235, 0.11);
-}
-
-.fv-kpi-card::after {
-    content: "";
-    position: absolute;
-    inset: auto -50px -70px auto;
-    width: 180px;
-    height: 180px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 66%);
-}
-
-.fv-kpi-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 14px;
-}
-
-.fv-kpi-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(148,163,184,0.14);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
-}
-
-.fv-kpi-icon svg {
-    width: 20px;
-    height: 20px;
-}
-
-.fv-kpi-icon.blue { background: linear-gradient(180deg, rgba(37,99,235,0.12), rgba(109,93,251,0.10)); color: var(--fv-blue); }
-.fv-kpi-icon.red { background: linear-gradient(180deg, rgba(244,63,94,0.12), rgba(249,115,22,0.10)); color: var(--fv-red); }
-.fv-kpi-icon.green { background: linear-gradient(180deg, rgba(16,185,129,0.12), rgba(56,189,248,0.10)); color: var(--fv-green); }
-
-.fv-kpi-copy small {
-    display: block;
-    color: var(--fv-text-soft);
-    font-size: 0.92rem;
-    font-weight: 600;
-}
-
-.fv-kpi-copy b {
-    display: block;
-    margin-top: 6px;
-    color: var(--fv-text);
-    font-size: 1.72rem;
-    line-height: 1.1;
-}
-
-.fv-kpi-copy span {
-    display: block;
-    margin-top: 6px;
-    color: var(--fv-green);
-    font-size: 0.9rem;
-    font-weight: 700;
-}
-
-.fv-kpi-copy span.red { color: var(--fv-red); }
-.fv-kpi-copy span.blue { color: var(--fv-blue); }
-
-.fv-kpi-spark {
-    min-width: 92px;
-    align-self: center;
-}
-
-.fv-audit-shell {
-    padding: 22px 22px 20px;
-    margin-top: 4px;
-}
-
-.fv-audit-shell::before {
-    content: "";
-    position: absolute;
-    top: -90px;
-    right: -70px;
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(109,93,251,0.10), transparent 68%);
-}
-
-.fv-main-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-
-.fv-main-title-wrap {
-    display: flex;
-    gap: 14px;
-}
-
-.fv-main-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--fv-blue), var(--fv-violet));
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 18px 28px rgba(109, 93, 251, 0.22);
-    animation: fvFloat 4s ease-in-out infinite;
-}
-
-.fv-main-title {
-    font-size: 1.72rem;
-    font-weight: 800;
-    line-height: 1.05;
-    color: var(--fv-text);
-}
-
-.fv-main-subtitle {
-    margin-top: 5px;
-    color: var(--fv-text-soft);
-    font-size: 0.94rem;
-    max-width: 680px;
-    line-height: 1.5;
-}
-
-.fv-main-head-actions .stButton > button {
-    min-height: 42px;
-    border-radius: 14px;
-    border: 1px solid #dce5f4;
-    background: rgba(255,255,255,0.92);
-    color: #334155;
-    font-weight: 700;
-    box-shadow: 0 8px 24px rgba(148,163,184,0.08);
-    transition: all 180ms ease;
-}
-
-.fv-main-head-actions .stButton > button:hover {
-    border-color: #c7d8ff;
-    color: var(--fv-blue);
-    transform: translateY(-1px);
-}
-
-.fv-section-label {
-    margin: 2px 0 10px;
-    color: #334155;
-    font-size: 0.96rem;
-    font-weight: 700;
-}
-
-.fv-tolerance-block [data-testid="stPills"] {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.fv-tolerance-block [data-testid="stPills"] [data-baseweb="tag"] {
-    min-height: 42px;
-    padding: 4px 6px;
-    border-radius: 16px;
-    border: 1px solid #dde6f3 !important;
-    background: rgba(255,255,255,0.92) !important;
-    box-shadow: 0 6px 16px rgba(148,163,184,0.08);
-    transition: all 180ms ease;
-}
-
-.fv-tolerance-block [data-testid="stPills"] [data-baseweb="tag"]:hover {
-    border-color: #c9d9ff !important;
-    transform: translateY(-1px);
-}
-
-.fv-tolerance-block [data-testid="stPills"] [data-baseweb="tag"]:has(button[aria-pressed="true"]) {
-    border-color: rgba(99, 102, 241, 0.38) !important;
-    background: linear-gradient(180deg, rgba(37,99,235,0.09), rgba(109,93,251,0.10)) !important;
-    box-shadow: 0 10px 22px rgba(99,102,241,0.10);
-}
-
-.fv-tolerance-block [data-testid="stPills"] button {
-    color: #334155 !important;
-    font-weight: 700 !important;
-    border-radius: 14px !important;
-    padding: 0 12px !important;
-}
-
-.fv-tolerance-block [data-testid="stPills"] button[aria-pressed="true"] {
-    color: var(--fv-violet) !important;
-}
-
-.stMain [data-testid="stPills"] {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.stMain [data-testid="stPills"] [data-baseweb="tag"] {
-    min-height: 42px;
-    padding: 4px 6px;
-    border-radius: 16px;
-    border: 1px solid #dde6f3 !important;
-    background: rgba(255,255,255,0.92) !important;
-    box-shadow: 0 6px 16px rgba(148,163,184,0.08);
-    transition: all 180ms ease;
-}
-
-.stMain [data-testid="stPills"] [data-baseweb="tag"]:hover {
-    border-color: #c9d9ff !important;
-    transform: translateY(-1px);
-}
-
-.stMain [data-testid="stPills"] [data-baseweb="tag"]:has(button[aria-pressed="true"]) {
-    border-color: rgba(99, 102, 241, 0.38) !important;
-    background: linear-gradient(180deg, rgba(37,99,235,0.09), rgba(109,93,251,0.10)) !important;
-    box-shadow: 0 10px 22px rgba(99,102,241,0.10);
-}
-
-.stMain [data-testid="stPills"] button {
-    color: #334155 !important;
-    font-weight: 700 !important;
-    border-radius: 14px !important;
-    padding: 0 12px !important;
-}
-
-.stMain [data-testid="stPills"] button[aria-pressed="true"] {
-    color: var(--fv-violet) !important;
-}
-
-.fv-custom-tolerance {
-    margin-top: 14px;
-}
-
-.fv-upload-section {
-    margin-top: 18px;
-}
-
-.fv-audit-brief-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-    margin: 4px 0 22px;
-}
-
-.fv-brief-card {
-    padding: 16px 18px;
-    border-radius: 22px;
-    border: 1px solid #e4ebf6;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(246,249,255,0.95));
-    box-shadow: 0 16px 36px rgba(148,163,184,0.10);
-}
-
-.fv-brief-card small {
-    display: block;
-    color: #64748b;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.fv-brief-card b {
-    display: block;
-    margin-top: 10px;
-    color: var(--fv-text);
-    font-size: 1.05rem;
-    font-weight: 800;
-}
-
-.fv-brief-card span {
-    display: block;
-    margin-top: 8px;
-    color: var(--fv-text-soft);
-    font-size: 0.9rem;
-    line-height: 1.55;
-}
-
-.fv-upload-bridge {
-    margin-top: 96px;
-    display: flex;
-    justify-content: center;
-}
-
-.fv-upload-bridge-node {
-    width: 64px;
-    height: 64px;
-    border-radius: 999px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(244,247,255,0.95));
-    border: 1px solid #dce5f4;
-    box-shadow: 0 18px 34px rgba(148,163,184,0.14);
-    color: #64748b;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.fv-upload-card {
-    position: relative;
-    padding: 18px 18px 16px;
-    border-radius: 24px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,255,0.96));
-    border: 1px solid #e4ebf6;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.94), 0 18px 42px rgba(148,163,184,0.10);
-    overflow: hidden;
-}
-
-.fv-upload-card::before {
-    content: "";
-    position: absolute;
-    top: -54px;
-    right: -18px;
-    width: 124px;
-    height: 124px;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(37,99,235,0.08), transparent 68%);
-}
-
-.fv-upload-card::after {
-    content: "";
-    position: absolute;
-    inset: auto 18px 12px auto;
-    width: 116px;
-    height: 60px;
-    background:
-        radial-gradient(circle at 20% 20%, rgba(148,163,184,0.16), transparent 58%),
-        linear-gradient(135deg, rgba(226,232,240,0.55), rgba(255,255,255,0));
-    opacity: 0.65;
-    border-radius: 22px;
-    pointer-events: none;
-}
-
-.fv-upload-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.fv-upload-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(148,163,184,0.14);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
-    flex-shrink: 0;
-}
-
-.fv-upload-icon svg {
-    width: 22px;
-    height: 22px;
-}
-
-.fv-upload-icon.violet { background: linear-gradient(180deg, rgba(37,99,235,0.14), rgba(109,93,251,0.12)); color: var(--fv-blue); }
-.fv-upload-icon.green { background: linear-gradient(180deg, rgba(16,185,129,0.14), rgba(56,189,248,0.10)); color: var(--fv-green); }
-
-.fv-upload-title {
-    font-size: 1.18rem;
-    font-weight: 800;
-    color: var(--fv-text);
-}
-
-.fv-upload-subtitle {
-    margin-top: 4px;
-    color: var(--fv-text-soft);
-    font-size: 0.91rem;
-    line-height: 1.48;
-}
-
-.fv-upload-card [data-testid="stFileUploader"],
-.fv-upload-card [data-testid="stFileUploader"] > div {
-    background: transparent !important;
-    border: 0 !important;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"] {
-    position: relative;
-    min-height: 126px;
-    border-radius: 20px !important;
-    border: 1.6px dashed #d7e0f0 !important;
-    background: linear-gradient(180deg, rgba(248,250,255,0.88), rgba(255,255,255,0.98)) !important;
-    transition: all 180ms ease;
-    overflow: hidden;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"]:hover {
-    border-color: rgba(99, 102, 241, 0.42) !important;
-    box-shadow: inset 0 0 0 1px rgba(99,102,241,0.14);
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"] > div {
-    opacity: 0;
-    background: transparent !important;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"]::before {
-    content: "Arraste e solte o arquivo aqui";
-    position: absolute;
-    inset: 34px 18px auto;
-    text-align: center;
-    color: #334155;
-    font-weight: 700;
-    font-size: 0.96rem;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"]::after {
-    content: "ou clique para selecionar";
-    position: absolute;
-    inset: 62px 18px auto;
-    text-align: center;
-    color: var(--fv-blue);
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDropzone"] button {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    opacity: 0 !important;
-    z-index: 2;
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-}
-
-.fv-upload-card [data-testid="stFileUploaderFile"] {
-    border-radius: 16px !important;
-    border: 1px solid #dce5f4 !important;
-    background: rgba(255, 255, 255, 0.96) !important;
-    color: var(--fv-text) !important;
-}
-
-.fv-upload-card [data-testid="stFileUploaderFile"] * {
-    background: transparent !important;
-    color: inherit !important;
-}
-
-.fv-upload-card [data-testid="stFileUploaderDeleteBtn"] {
-    background: #ffffff !important;
-    border: 1px solid #dce5f4 !important;
-    color: #475569 !important;
-}
-
-.stMain [data-testid="stFileUploader"],
-.stMain [data-testid="stFileUploader"] > div {
-    background: transparent !important;
-    border: 0 !important;
-}
-
-.stMain [data-testid="stFileUploaderDropzone"] {
-    position: relative !important;
-    min-height: 126px !important;
-    padding: 0 !important;
-    border-radius: 20px !important;
-    border: 1.6px dashed #d7e0f0 !important;
-    background: linear-gradient(180deg, rgba(248,250,255,0.88), rgba(255,255,255,0.98)) !important;
-    overflow: hidden !important;
-}
-
-.stMain [data-testid="stFileUploaderDropzone"]:hover {
-    border-color: rgba(99, 102, 241, 0.42) !important;
-    box-shadow: inset 0 0 0 1px rgba(99,102,241,0.14);
-}
-
-.stMain [data-testid="stFileUploaderDropzone"] > span,
-.stMain [data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderDropzoneInstructions"] {
-    display: none !important;
-}
-
-.stMain [data-testid="stFileUploaderDropzone"]::before {
-    content: "Arraste e solte o arquivo aqui";
-    position: absolute;
-    inset: 34px 18px auto;
-    text-align: center;
-    color: #334155;
-    font-weight: 700;
-    font-size: 0.96rem;
-    width: calc(100% - 36px);
-}
-
-.stMain [data-testid="stFileUploaderDropzone"]::after {
-    content: "ou clique para selecionar";
-    position: absolute;
-    inset: 62px 18px auto;
-    text-align: center;
-    color: var(--fv-blue);
-    font-size: 0.9rem;
-    font-weight: 600;
-    width: calc(100% - 36px);
-}
-
-.stMain [data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderDropzoneInput"] {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    clip: auto !important;
-    clip-path: none !important;
-    opacity: 0 !important;
-}
-
-.fv-file-ready {
-    margin-top: 14px;
-    padding: 12px 14px;
-    border-radius: 16px;
-    border: 1px solid #dce5f4;
-    background: rgba(255,255,255,0.92);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.fv-file-ready strong {
-    color: var(--fv-text);
-    display: block;
-}
-
-.fv-file-ready span {
-    color: var(--fv-text-soft);
-    font-size: 0.9rem;
-}
-
-.fv-upload-actions .stButton > button {
-    min-height: 40px;
-    border-radius: 14px;
-    border: 1px solid #dde6f3;
-    background: rgba(255,255,255,0.92);
-    color: #475569;
-    font-weight: 700;
-    transition: all 180ms ease;
-}
-
-.fv-upload-actions .stButton > button:hover {
-    border-color: #c8d7ff;
-    color: var(--fv-blue);
-    transform: translateY(-1px);
-}
-
-.fv-upload-foot {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 12px;
-    color: #94a3b8;
-    font-size: 0.82rem;
-    font-weight: 600;
-    flex-wrap: wrap;
-}
-
-.fv-primary-cta {
-    margin-top: 20px;
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.fv-primary-cta .stButton > button[kind="primary"] {
-    min-height: 58px;
-    border-radius: 20px;
-    border: 1px solid rgba(109,93,251,0.22);
-    background: linear-gradient(135deg, #2563eb 0%, #5b6dfb 55%, #7c3aed 100%);
-    color: #fff;
-    font-weight: 800;
-    font-size: 1rem;
-    box-shadow: 0 22px 44px rgba(99, 102, 241, 0.30);
-    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-}
-
-.fv-primary-cta .stButton > button[kind="primary"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 26px 48px rgba(99,102,241,0.36);
-    filter: saturate(1.06);
-}
-
-.fv-primary-cta .stButton > button[kind="primary"]:disabled {
-    background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%);
-    box-shadow: none;
-}
-
-.fv-primary-subtitle {
-    margin-top: 8px;
-    text-align: center;
-    color: #e0e7ff;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.fv-security-note {
-    margin-top: 10px;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.9rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-}
-
-.fv-right-stack {
-    display: grid;
-    gap: 14px;
-}
-
-.fv-insights-shell {
-    padding: 18px 18px;
-}
-
-.fv-insights-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 1.22rem;
-    font-weight: 800;
-    color: var(--fv-text);
-}
-
-.fv-insights-title span:first-child {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.fv-insights-copy {
-    margin: 12px 0 14px;
-    color: var(--fv-text-soft);
-    line-height: 1.6;
-    font-size: 0.92rem;
-}
-
-.fv-check-list {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.fv-check-item {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    color: #334155;
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-.fv-check-badge {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--fv-blue);
-    background: linear-gradient(180deg, rgba(37,99,235,0.12), rgba(109,93,251,0.10));
-    border: 1px solid rgba(99,102,241,0.16);
-}
-
-.fv-panel-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #e5edf8 12%, #e5edf8 88%, transparent);
-    margin: 18px 0;
-}
-
-.fv-latest-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.fv-latest-head b {
-    font-size: 1rem;
-}
-
-.fv-link {
-    color: var(--fv-blue);
-    font-weight: 700;
-    font-size: 0.9rem;
-}
-
-.fv-recent-list {
-    display: grid;
-    gap: 10px;
-}
-
-.fv-recent-item {
-    padding: 12px 12px 10px;
-    border-radius: 16px;
-    background: rgba(248,250,255,0.88);
-    border: 1px solid #e3ebf7;
-}
-
-.fv-recent-top {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: center;
-}
-
-.fv-recent-code {
-    font-weight: 800;
-    color: #0f172a;
-}
-
-.fv-recent-time {
-    margin-top: 4px;
-    color: #94a3b8;
-    font-size: 0.84rem;
-    font-weight: 600;
-}
-
-.fv-status-tag {
-    min-width: 96px;
-    padding: 7px 10px;
-    border-radius: 14px;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 800;
-}
-
-.fv-status-tag.complete {
-    color: #059669;
-    background: rgba(16,185,129,0.12);
-}
-
-.fv-status-tag.running {
-    color: #b45309;
-    background: rgba(245,158,11,0.16);
-}
-
-.fv-recent-value {
-    margin-top: 10px;
-    color: #334155;
-    font-size: 0.92rem;
-    font-weight: 700;
-}
-
-.fv-tip-card {
-    padding: 14px 14px 12px;
-    border-radius: 18px;
-    border: 1px solid #e3ebf7;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,252,255,0.98));
-    display: flex;
-    gap: 12px;
-}
-
-.fv-tip-card strong {
-    display: block;
-    color: #0f172a;
-    margin-bottom: 4px;
-}
-
-.fv-tip-card span {
-    color: #64748b;
-    font-size: 0.92rem;
-    line-height: 1.55;
-}
-
-.fv-top-search-note {
-    margin-top: 4px;
-    color: #94a3b8;
-    font-size: 0.85rem;
-}
-
-.fv-page-card {
-    padding: 20px;
-}
-
-.fv-empty-state {
-    padding: 28px 24px;
-    border-radius: 24px;
-    border: 1px dashed #d8e2f2;
-    background: rgba(248,250,255,0.9);
-    text-align: center;
-    color: #64748b;
-}
-
-.fv-results-stack > * + * {
-    margin-top: 18px;
-}
-
-.fv-summary-meta {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 14px;
-}
-
-.fv-summary-meta-card {
-    padding: 14px 16px;
-    border-radius: 18px;
-    border: 1px solid #e2e8f0;
-    background: rgba(248,250,255,0.92);
-}
-
-.fv-summary-meta-card small {
-    display: block;
-    color: #64748b;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.fv-summary-meta-card b {
-    display: block;
-    margin-top: 8px;
-    color: #0f172a;
-    font-size: 0.98rem;
-    font-weight: 800;
-}
-
-.fv-summary-meta-card span {
-    display: block;
-    margin-top: 6px;
-    color: #64748b;
-    font-size: 0.88rem;
-    line-height: 1.45;
-}
-
-.fv-audit-shell .stAlert {
-    border-radius: 18px;
-    border: 1px solid rgba(248, 113, 113, 0.18);
-}
-
-.fv-shell-main .stExpander,
-.fv-shell-main div[data-testid="stExpander"] {
-    border-radius: 22px !important;
-    border: 1px solid #e2e8f0 !important;
-    background: rgba(255,255,255,0.9) !important;
-}
-
-.fv-shell-main .stProgress > div > div > div > div {
-    background: linear-gradient(90deg, var(--fv-blue), var(--fv-violet)) !important;
-}
-
-@media (max-width: 1280px) {
-    .fv-kpi-grid,
-    .fv-audit-brief-grid,
-    .fv-summary-meta {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 1100px) {
-    .fv-upload-bridge {
-        margin-top: 12px;
-        margin-bottom: 12px;
-    }
-}
-
-@media (max-height: 820px) {
-    .block-container {
-        padding-top: 12px !important;
-        padding-bottom: 20px !important;
-    }
-    .fv-topbar-shell {
-        min-height: 54px;
-        padding: 8px 14px;
-    }
-    .fv-topbar-search-copy {
-        font-size: 0.9rem;
-    }
-    .fv-kpi-grid {
-        gap: 10px;
-        margin: 6px 0 8px;
-    }
-    .fv-kpi-card {
-        padding: 10px 12px;
-        border-radius: 18px;
-    }
-    .fv-kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 14px;
-    }
-    .fv-kpi-copy small {
-        font-size: 0.78rem;
-    }
-    .fv-kpi-copy b {
-        margin-top: 4px;
-        font-size: 1.28rem;
-    }
-    .fv-kpi-copy span {
-        margin-top: 4px;
-        font-size: 0.76rem;
-    }
-    .fv-kpi-spark {
-        min-width: 66px;
-        display: none;
-    }
-    .fv-main-title {
-        font-size: 1.46rem;
-    }
-    .fv-main-subtitle {
-        font-size: 0.82rem;
-        line-height: 1.4;
-    }
-    .fv-upload-head {
-        margin-bottom: 6px;
-    }
-    .fv-upload-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 14px;
-    }
-    .fv-upload-title {
-        font-size: 1rem;
-    }
-    .fv-upload-subtitle {
-        font-size: 0.82rem;
-        line-height: 1.38;
-    }
-    .stMain [data-testid="stFileUploaderDropzone"] {
-        min-height: 88px !important;
-    }
-    .stMain [data-testid="stFileUploaderDropzone"]::before {
-        inset: 16px 14px auto;
-        width: calc(100% - 28px);
-        font-size: 0.9rem;
-    }
-    .stMain [data-testid="stFileUploaderDropzone"]::after {
-        inset: 36px 14px auto;
-        width: calc(100% - 28px);
-        font-size: 0.84rem;
-    }
-    .fv-upload-foot {
-        display: none;
-    }
-    .fv-primary-subtitle,
-    .fv-security-note {
-        display: none;
-    }
-}
-
-@media (max-width: 900px) {
-    .block-container {
-        padding: 14px 14px 28px !important;
-    }
-    .fv-shell-root [data-testid="column"] {
-        min-width: 100% !important;
-        flex: 1 1 100% !important;
-    }
-    .fv-topbar-actions {
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-    .fv-topbar-shell {
-        gap: 12px;
-    }
-    .fv-kpi-grid,
-    .fv-audit-brief-grid,
-    .fv-summary-meta {
-        grid-template-columns: 1fr;
-    }
-    .fv-main-head {
-        flex-direction: column;
-    }
-    .fv-primary-cta {
-        max-width: none;
-    }
-    .fv-upload-foot,
-    .fv-file-ready,
-    .fv-topbar-search {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-</style>
-"""
-
-st.markdown(DASHBOARD_CSS, unsafe_allow_html=True)
 
 
 def icon_doc(size=20):
@@ -4036,159 +2573,6 @@ def br_money(value):
 def safe_text(value):
     return html.escape(str(ui(value)))
 
-
-def svg_icon(name, size=20):
-    icons = {
-        "search": '<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
-        "bell": '<path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5"/><path d="M10 20a2 2 0 0 0 4 0" stroke-linecap="round"/>',
-        "alert": '<path d="M12 4 3 19h18L12 4Z" stroke-linejoin="round"/><path d="M12 9v4" stroke-linecap="round"/><circle cx="12" cy="16" r="1"/>',
-        "dollar": '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.2c-.5-.8-1.4-1.2-2.5-1.2-1.7 0-2.8.9-2.8 2.1 0 3 5.8 1.1 5.8 4 0 1.3-1.2 2.2-3 2.2-1.3 0-2.4-.5-3.1-1.5" stroke-linecap="round" stroke-linejoin="round"/>',
-        "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/>',
-        "zap": '<path d="M13 3 4 14h6l-1 7 9-11h-6l1-7Z" stroke-linejoin="round"/>',
-        "shield": '<path d="M12 3 5 6v5c0 4.2 2.5 8 7 10 4.5-2 7-5.8 7-10V6l-7-3Z" stroke-linejoin="round"/><path d="m9.5 12 1.8 1.8 3.7-4" stroke-linecap="round" stroke-linejoin="round"/>',
-        "compare": '<path d="M7 7h11l-2.7-2.7M17 17H6l2.7 2.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 7H7m0 0 2.5 2.5M6 17h11m0 0-2.5-2.5" stroke-linecap="round" stroke-linejoin="round"/>',
-        "check": '<path d="m5 12.5 4.2 4.2L19 7.2" stroke-linecap="round" stroke-linejoin="round"/>',
-        "bulb": '<path d="M9 18h6M10 21h4M8.2 14.5A6 6 0 1 1 15.8 14.5c-.9.8-1.3 1.5-1.4 2.5h-2.8c-.1-1-.5-1.7-1.4-2.5Z" stroke-linecap="round" stroke-linejoin="round"/>',
-        "spark": '<path d="M12 3 9.8 9.1 3 12l6.8 2.9L12 21l2.2-6.1L21 12l-6.8-2.9L12 3Z" stroke-linejoin="round"/>',
-    }
-    content = icons.get(name, icons["spark"])
-    return (
-        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
-        'xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="display:block;">'
-        f'<g stroke="currentColor" stroke-width="1.8">{content}</g></svg>'
-    )
-
-
-def sparkline_svg(color, points):
-    width = 112
-    height = 44
-    path = " ".join(
-        f"{(index / max(len(points) - 1, 1)) * width:.1f},{height - (value / 100) * (height - 8):.1f}"
-        for index, value in enumerate(points)
-    )
-    return (
-        f'<svg class="fv-kpi-spark" viewBox="0 0 {width} {height}" fill="none" aria-hidden="true">'
-        f'<path d="M0 {height - 8:.1f} H{width}" stroke="rgba(148,163,184,0.12)" stroke-width="1"/>'
-        f'<polyline points="{path}" stroke="{color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
-        "</svg>"
-    )
-
-
-def format_relative_history_label(value):
-    if not value:
-        return "Hoje, 09:32"
-    try:
-        dt = datetime.strptime(str(value), "%d/%m/%Y %H:%M:%S")
-    except ValueError:
-        return str(value)
-    now = datetime.now()
-    if dt.date() == now.date():
-        return f"Hoje, {dt.strftime('%H:%M')}"
-    if (now.date() - dt.date()).days == 1:
-        return f"Ontem, {dt.strftime('%H:%M')}"
-    return dt.strftime("%d/%m, %H:%M")
-
-
-def format_duration_label(seconds):
-    if seconds is None:
-        return "-"
-    try:
-        total_seconds = float(seconds)
-    except (TypeError, ValueError):
-        return "-"
-    if total_seconds < 1:
-        return f"{round(total_seconds * 1000):.0f} ms"
-    if total_seconds < 60:
-        return f"{total_seconds:.2f} s".replace(".", ",")
-    minutes, remainder = divmod(total_seconds, 60)
-    return f"{int(minutes)}m {remainder:04.1f}s".replace(".", ",")
-
-
-def build_session_audit_meta():
-    resumo = st.session_state.get("resumo") or {}
-    if not resumo:
-        return None
-
-    faltantes_total = int(resumo.get("faltantes_a", 0) or 0) + int(resumo.get("faltantes_b", 0) or 0)
-    return {
-        "runtime_raw": st.session_state.get("audit_runtime"),
-        "runtime_label": format_duration_label(st.session_state.get("audit_runtime")),
-        "tolerancia_label": br_money(st.session_state.get("tol", 0.50)),
-        "total": int(resumo.get("total", 0) or 0),
-        "divergentes": int(resumo.get("divergentes", 0) or 0),
-        "faltantes": faltantes_total,
-        "impacto_label": br_money(resumo.get("impacto_absoluto", 0) or 0),
-        "arquivo_a": str(st.session_state.get("nome_a", "ATUA")),
-        "arquivo_b": str(st.session_state.get("nome_b", "GW")),
-    }
-
-
-def build_recent_audits():
-    history = auditoria_io.carregar_historico()
-    items = []
-    if st.session_state.get("processing"):
-        items.append({"codigo": "AUD-2026-EM-ANDAMENTO", "momento": "Agora", "status": "Em análise", "valor": "—"})
-    for index, item in enumerate(history[: max(0, 4 - len(items))], start=1):
-        valor = item.get("impacto_absoluto", 0)
-        items.append(
-            {
-                "codigo": f"AUD-2026-{index:05d}",
-                "momento": format_relative_history_label(item.get("data_hora", "")),
-                "status": "Concluída",
-                "valor": br_money(valor) if float(valor or 0) > 0 else "—",
-            }
-        )
-    return items or RECENT_AUDIT_FALLBACK
-
-
-def build_dashboard_kpis():
-    history = auditoria_io.carregar_historico()
-    today_prefix = datetime.now().strftime("%d/%m/%Y")
-    today_count = sum(1 for item in history if str(item.get("data_hora", "")).startswith(today_prefix))
-    session_meta = build_session_audit_meta()
-    current_summary = st.session_state.get("resumo") or {}
-    divergences = int(current_summary.get("divergentes", 0) or 0)
-    latest_history = history[0] if history else {}
-    impact_value = current_summary.get("impacto_absoluto", 0) or latest_history.get("impacto_absoluto", 0) or 0
-    runtime_label = session_meta["runtime_label"] if session_meta else "Aguardando"
-    return [
-        {
-            "label": "Auditorias hoje",
-            "value": str(today_count),
-            "delta": f"{len(history)} salvas no histÃ³rico" if history else "Nenhuma salva ainda",
-            "tone": "blue",
-            "icon": svg_icon("spark", 20),
-            "spark": sparkline_svg("#5b6dfb", [32, 18, 70, 28, 34, 30, 33, 75, 70, 90]),
-            "delta_class": "blue",
-        },
-        {
-            "label": "Divergências",
-            "value": str(divergences),
-            "delta": "SessÃ£o atual" if session_meta else "Aguardando comparaÃ§Ã£o",
-            "tone": "red",
-            "icon": svg_icon("alert", 20),
-            "spark": sparkline_svg("#f43f5e", [84, 75, 66, 52, 57, 33, 25, 44, 52, 48]),
-            "delta_class": "red",
-        },
-        {
-            "label": "Impacto crÃ­tico",
-            "value": br_money(impact_value),
-            "delta": "SessÃ£o atual" if session_meta else "Ãšltima auditoria salva",
-            "tone": "green",
-            "icon": svg_icon("dollar", 20),
-            "spark": sparkline_svg("#10b981", [22, 38, 34, 56, 61, 49, 63, 54, 78, 86]),
-            "delta_class": "",
-        },
-        {
-            "label": "Tempo médio",
-            "value": runtime_label,
-            "delta": "Ãšltima auditoria" if session_meta else "Sem execuÃ§Ã£o nesta sessÃ£o",
-            "tone": "blue",
-            "icon": svg_icon("clock", 20),
-            "spark": sparkline_svg("#2563eb", [64, 48, 18, 56, 82, 42, 36, 48, 30, 32]),
-            "delta_class": "",
-        },
-    ]
 def validate_uploaded_pdf(uploaded_file):
     if uploaded_file is None:
         return
@@ -4250,8 +2634,8 @@ def salvar_upload_pdf(uploaded_file, prefixo):
         return None
 
     validate_uploaded_pdf(uploaded_file)
-    prune_stale_upload_files()
-    TEMP_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    temp_dir = Path(tempfile.gettempdir()) / "fretescan_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
     if isinstance(uploaded_file, dict):
         file_bytes = uploaded_file.get("bytes", b"")
@@ -4265,47 +2649,11 @@ def salvar_upload_pdf(uploaded_file, prefixo):
         delete=False,
         suffix=suffix,
         prefix=f"{prefixo_limpo}_",
-        dir=TEMP_UPLOAD_DIR,
+        dir=temp_dir,
     ) as arquivo_temp:
         arquivo_temp.write(file_bytes)
 
     return arquivo_temp.name
-
-
-def cleanup_temp_file(path):
-    if not path:
-        return
-    try:
-        arquivo = Path(path)
-        base_dir = TEMP_UPLOAD_DIR.resolve(strict=False)
-        target = arquivo.resolve(strict=False)
-        if target.is_relative_to(base_dir) and arquivo.exists():
-            arquivo.unlink()
-    except OSError:
-        pass
-
-
-def prune_stale_upload_files():
-    if not TEMP_UPLOAD_DIR.exists():
-        return
-    limite = time() - TEMP_UPLOAD_MAX_AGE_SECONDS
-    for arquivo in TEMP_UPLOAD_DIR.glob("*.pdf"):
-        try:
-            if arquivo.is_file() and arquivo.stat().st_mtime < limite:
-                arquivo.unlink()
-        except OSError:
-            continue
-
-
-def cleanup_all_temp_upload_files():
-    if not TEMP_UPLOAD_DIR.exists():
-        return
-    for arquivo in TEMP_UPLOAD_DIR.glob("*.pdf"):
-        try:
-            if arquivo.is_file():
-                arquivo.unlink()
-        except OSError:
-            continue
 
 
 def normalizar_resumo_motor(resumo):
@@ -4502,10 +2850,7 @@ def resolve_gw_visual_source_path():
         caminho = salvar_upload_pdf(stored, "GW")
     except Exception:
         return None
-    if caminho and Path(str(caminho)).exists():
-        st.session_state["caminho_b_temp"] = caminho
-        return caminho
-    return None
+    return caminho if caminho and Path(str(caminho)).exists() else None
 
 
 def ensure_gw_margin_visual(df, caminho_gw=None):
@@ -4522,8 +2867,7 @@ def ensure_gw_margin_visual(df, caminho_gw=None):
         return df
 
     existing = df[margin_column].fillna("").astype(str).str.strip()
-    missing_mask = existing.isin(["", "-", "None", "Não encontrado", "nan"])
-    if not missing_mask.any():
+    if existing[~existing.isin(["", "-", "None", "Não encontrado", "nan"])].any():
         return df
 
     resolved_path = caminho_gw or resolve_gw_visual_source_path()
@@ -4590,7 +2934,7 @@ def apply_conference_filters(prepared, scope_label, min_diff, search_text, order
     visible = prepared.copy()
 
     if search_text:
-        visible = visible[visible["CTE"].astype(str).str.contains(search_text.strip(), case=False, na=False, regex=False)]
+        visible = visible[visible["CTE"].astype(str).str.contains(search_text.strip(), case=False, na=False)]
 
     if scope_label == "Críticos":
         visible = visible[visible["_Status Base"].isin(["Divergente", "Faltante no A", "Faltante no B"])]
@@ -4740,8 +3084,8 @@ def build_excel_bytes(df, resumo, nome_a, nome_b, tolerancia):
         "OK": PatternFill(fill_type="solid", start_color="DCFCE7", end_color="DCFCE7"),
         "OK Arred.": PatternFill(fill_type="solid", start_color="DBEAFE", end_color="DBEAFE"),
         "Divergente": PatternFill(fill_type="solid", start_color="FEE2E2", end_color="FEE2E2"),
-        "Faltante no A": PatternFill(fill_type="solid", start_color="FFEDD5", end_color="FFEDD5"),
-        "Faltante no B": PatternFill(fill_type="solid", start_color="FFEDD5", end_color="FFEDD5"),
+        "Faltante no A": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
+        "Faltante no B": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
     }
     company_columns = {"Empresa A", "Empresa B", "Dif. Empresa"}
     driver_columns = {"Motorista A", "Motorista B", "Diferença"}
@@ -5173,13 +3517,7 @@ def build_debug_preview(registros):
     }
 
 
-def cleanup_session_temp_files(keys=None):
-    for key in keys or ["caminho_a_temp", "caminho_b_temp"]:
-        cleanup_temp_file(st.session_state.pop(key, None))
-
-
 def reset_audit_state():
-    cleanup_session_temp_files()
     for key in ["df_res", "resumo", "nome_a", "nome_b", "tol", "audit_debug"]:
         st.session_state.pop(key, None)
 
@@ -5368,6 +3706,119 @@ def render_hero():
         """,
         unsafe_allow_html=True,
     )
+def render_upload_box(label, key):
+    stored_key = f"{key}_stored"
+    version_key = f"{key}_widget_version"
+    legacy_upload = st.session_state.get(key)
+    if st.session_state.get(stored_key) is None and legacy_upload is not None and hasattr(legacy_upload, "getvalue"):
+        st.session_state[stored_key] = serialize_uploaded_file(legacy_upload)
+        st.session_state.pop(key, None)
+
+    current_file = st.session_state.get(stored_key)
+    is_loaded = current_file is not None
+    badge = '<span class="upload-badge loaded">Carregado</span>' if is_loaded else '<span class="upload-badge">Aguardando</span>'
+    widget_version = int(st.session_state.get(version_key, 0) or 0)
+    widget_key = f"{key}_widget_{widget_version}"
+
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div class="upload-card{' is-loaded' if is_loaded else ''}">
+                <div class="upload-shell">
+                    <div class="upload-head">
+                        <div class="small-icon">{icon_doc(18)}</div>
+                        <div class="upload-copy">
+                            <div class="upload-title-row">
+                                <div class="upload-name">{safe_text(label)}</div>
+                                {badge}
+                            </div>
+                            <div class="upload-help">Arraste ou selecione o PDF do período.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if not is_loaded:
+            uploaded = st.file_uploader(label, type=["pdf"], key=widget_key, label_visibility="collapsed")
+            if uploaded:
+                st.session_state[stored_key] = serialize_uploaded_file(uploaded)
+                st.session_state.pop(widget_key, None)
+                st.rerun()
+            return current_file
+
+        st.markdown(
+            f"""
+            <div class="upload-inline-status">
+                <span class="upload-inline-dot"></span>
+                <strong>Arquivo pronto</strong>
+                <span>{safe_text(get_upload_name(current_file))} - {file_size(current_file)}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        action_col_a, action_col_b = st.columns(2)
+        with action_col_a:
+            if st.button("Trocar arquivo", key=f"{key}_replace", use_container_width=True):
+                st.session_state.pop(stored_key, None)
+                st.session_state.pop(widget_key, None)
+                st.session_state[version_key] = widget_version + 1
+                reset_audit_state()
+                st.session_state.audit_error = None
+                st.session_state.audit_error_details = []
+                st.rerun()
+        with action_col_b:
+            if st.button("Remover arquivo", key=f"{key}_remove", use_container_width=True):
+                st.session_state.pop(stored_key, None)
+                st.session_state.pop(widget_key, None)
+                st.session_state[version_key] = widget_version + 1
+                reset_audit_state()
+                st.session_state.audit_error = None
+                st.session_state.audit_error_details = []
+                st.rerun()
+        return current_file
+def render_upload_section():
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
+                <div>
+                    <h3>Enviar documentos</h3>
+                    <div class="panel-subtitle">Selecione os dois relatórios do mesmo período para iniciar a auditoria.</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        col_a, col_b = st.columns(2, gap="medium")
+        with col_a:
+            file_a = render_upload_box("Relatório A - ATUA", "up_a")
+        with col_b:
+            file_b = render_upload_box("Relatório B - GW", "up_b")
+    return file_a, file_b
+
+def render_tolerance_section():
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
+                <div>
+                    <h3>Tolerância financeira</h3>
+                    <div class="panel-subtitle">Defina o limite aceito para diferenças de arredondamento.</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        opts = {"R$ 0,00": 0.0, "R$ 0,30": 0.30, "R$ 0,50": 0.50, "R$ 1,00": 1.0, "Personalizado": -1}
+        selected = st.radio("Tolerância", list(opts.keys()), index=2, horizontal=True, label_visibility="collapsed")
+        value = opts[selected]
+        if value == -1:
+            value = st.number_input("Valor personalizado (R$)", 0.0, 999.0, 0.50, 0.10, format="%.2f")
+    return value
+
+
 def render_ops_panel():
     hist = auditoria_io.carregar_historico()
     latest = hist[0] if hist else None
@@ -5431,13 +3882,110 @@ def kpi_html(label, value, tone="purple", money=False):
     )
 
 
+def render_kpis(resumo, df):
+    df_calc = df.copy()
+    df_calc["EmpA"] = df_calc["Empresa A"].fillna(0)
+    df_calc["EmpB"] = df_calc["Empresa B"].fillna(0)
+    df_calc["MotA"] = df_calc["Motorista A"].fillna(0)
+    df_calc["MotB"] = df_calc["Motorista B"].fillna(0)
+    df_calc["DE"] = df_calc["EmpA"] - df_calc["EmpB"]
+    df_calc["DM"] = df_calc["MotA"] - df_calc["MotB"]
+    df_calc["MD"] = df_calc[["DE", "DM"]].abs().max(axis=1)
+
+    div_df = df_calc[df_calc["Status"] == "Divergente"]
+    crit_df = df_calc[df_calc["Status"].isin(["Divergente", "Faltante no A", "Faltante no B"])]
+
+    de_div = div_df["DE"].sum()
+    dm_div = div_df["DM"].sum()
+    imp_div = div_df["MD"].sum()
+    de_crit = crit_df["DE"].sum()
+    dm_crit = crit_df["DM"].sum()
+    imp_geral = df_calc["MD"].sum()
+
+    summary_html = (
+        '<div class="breadcrumb"><b>Resumo da auditoria</b><span>Resultado consolidado dos documentos processados</span></div>'
+        '<div class="dashboard-grid">'
+        f'{kpi_html("Total analisado", resumo["total"], "purple")}'
+        f'{kpi_html("OK", resumo["ok"], "green")}'
+        f'{kpi_html("OK Arred.", resumo["ok_arredondamento"], "blue")}'
+        f'{kpi_html("Diferenças dentro da tolerância", resumo["ok_arredondamento"], "blue")}'
+        f'{kpi_html("Divergentes reais", resumo["divergentes"], "red")}'
+        f'{kpi_html("Faltantes no A", resumo["faltantes_a"], "orange")}'
+        f'{kpi_html("Faltantes no B", resumo["faltantes_b"], "orange")}'
+        f'{kpi_html("Impacto Crítico Total", br_money(resumo["impacto_absoluto"]), "red", True)}'
+        '</div>'
+        '<div class="breadcrumb" style="margin-top:24px;"><b>Leitura financeira complementar</b><span>Detalhes de apoio para análise executiva</span></div>'
+        '<div class="dashboard-grid">'
+        f'{kpi_html("Diferença Empresa - Divergentes", br_money(de_div), "blue", True)}'
+        f'{kpi_html("Diferença Motorista - Divergentes", br_money(dm_div), "purple", True)}'
+        f'{kpi_html("Impacto - Divergentes", br_money(imp_div), "red", True)}'
+        f'{kpi_html("Diferença Empresa - Crítico Total", br_money(de_crit), "blue", True)}'
+        f'{kpi_html("Diferença Motorista - Crítico Total", br_money(dm_crit), "purple", True)}'
+        '</div>'
+        '<div class="panel span-12" style="margin-top:24px;">'
+        '<div class="panel-body">'
+        f'<div class="impact-line">Impacto geral incluindo arredondamentos: <b>{br_money(imp_geral)}</b></div>'
+        '<div class="explain">'
+        '<b>Divergentes</b> considera apenas CTEs encontrados nos dois relatórios com diferença acima da tolerância. '
+        '<b>Crítico total</b> soma divergentes reais e CTEs faltantes. '
+        '<b>OK Arred.</b> representa diferenças pequenas dentro da tolerância configurada. '
+        'As diferenças dentro da tolerância continuam visíveis para conferência, mas não entram no impacto crítico.'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(summary_html, unsafe_allow_html=True)
+def render_chart(df):
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
+                <div>
+                    <h3>Distribuição por status</h3>
+                    <div class="panel-subtitle">Volume de CTEs por classificação.</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        counts = df["Status"].value_counts().reset_index()
+        counts.columns = ["Status", "Qtd"]
+        counts["Status visual"] = counts["Status"].replace({"OK por arredondamento": "OK Arred."})
+        colors = {
+            "OK": "#22c55e",
+            "OK Arred.": "#179cf4",
+            "Divergente": "#ef4444",
+            "Faltante no A": "#ff9f1c",
+            "Faltante no B": "#ff9f1c",
+        }
+        fig = px.bar(
+            counts,
+            x="Qtd",
+            y="Status visual",
+            color="Status visual",
+            orientation="h",
+            text="Qtd",
+            color_discrete_map=colors,
+        )
+        fig.update_layout(
+            height=270,
+            margin=dict(l=6, r=12, t=6, b=6),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            font=dict(family="Manrope, Segoe UI, sans-serif", color="#202236"),
+            xaxis=dict(title="", gridcolor="#efedf6", zeroline=False),
+            yaxis=dict(title="", showgrid=False),
+        )
+        fig.update_traces(marker_line_width=0, textposition="outside", hovertemplate="%{y}: %{x}<extra></extra>")
+        st.plotly_chart(fig, use_container_width=True)
 def status_style(value):
     styles = {
         "OK": "background-color:#dcfce7;color:#166534;font-weight:800;border-radius:99px;",
         "OK Arred.": "background-color:#e8f3ff;color:#075985;font-weight:800;border-radius:99px;",
         "Divergente": "background-color:#fee2e2;color:#991b1b;font-weight:800;border-radius:99px;",
-        "Faltante no A": "background-color:#ffedd5;color:#9a3412;font-weight:800;border-radius:99px;",
-        "Faltante no B": "background-color:#ffedd5;color:#9a3412;font-weight:800;border-radius:99px;",
+        "Faltante no A": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
+        "Faltante no B": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
     }
     return styles.get(value, "")
 
@@ -5545,8 +4093,27 @@ def render_table(df):
         if not row_html:
             row_html.append(f'<tr><td class="cell-empty" colspan="{len(visible.columns)}">Nenhum registro encontrado com os filtros atuais.</td></tr>')
 
-        table_html = '<div class="table-shell audit-results-shell"><table class="audit-table">' + f'<thead><tr>{header_html}</tr></thead>' + f'<tbody>{"".join(row_html)}</tbody></table></div>' + '<div class="table-scroll-hint">No celular, arraste dentro da tabela para rolar horizontal e vertical sem travar a página.</div>'
+        table_html = '<div class="table-shell audit-results-shell"><table class="audit-table">' + f'<thead><tr>{header_html}</tr></thead>' + f'<tbody>{"".join(row_html)}</tbody></table></div>' + '<div class="table-scroll-hint">Use a roda do mouse sobre a tabela para rolar sem descer a página inteira.</div>'
         st.markdown(table_html, unsafe_allow_html=True)
+def render_exports(df, resumo, name_a, name_b, tolerance):
+    render_breadcrumb("Exportar relatório", "Arquivos executivos")
+    c1, c2, c3, c4 = st.columns(4, gap="large")
+    with c1:
+        with st.container(border=True):
+            st.markdown('<div class="export-card"><h4>CSV</h4><p>Dados brutos para análise.</p></div>', unsafe_allow_html=True)
+            st.download_button("Baixar CSV", auditoria_io.exportar_csv(df), "auditoria.csv", "text/csv", use_container_width=True)
+    with c2:
+        with st.container(border=True):
+            st.markdown('<div class="export-card"><h4>Excel</h4><p>Planilha formatada.</p></div>', unsafe_allow_html=True)
+            st.download_button("Baixar Excel", build_excel_bytes(df, resumo, name_a, name_b, tolerance), "auditoria.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+    with c3:
+        with st.container(border=True):
+            st.markdown('<div class="export-card"><h4>PDF Executivo</h4><p>Resumo executivo com foco em criticidade.</p></div>', unsafe_allow_html=True)
+            st.download_button("Baixar PDF Executivo", build_executive_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_executiva.pdf", "application/pdf", use_container_width=True)
+    with c4:
+        with st.container(border=True):
+            st.markdown('<div class="export-card"><h4>PDF de Conferência Detalhada</h4><p>Resumo, critérios, tolerância, críticos, diferenças dentro da tolerância, faltantes e tabela completa.</p></div>', unsafe_allow_html=True)
+            st.download_button("Baixar PDF de Conferência Detalhada", build_detailed_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_conferencia_detalhada.pdf", "application/pdf", use_container_width=True)
 def render_history_page():
     render_topbar("Histórico")
     render_breadcrumb("FreteScan", "Histórico de auditorias")
@@ -5636,8 +4203,8 @@ def render_reports_page():
     if search:
         search_norm = search.strip().lower()
         visible = visible[
-            visible["arquivo_a"].astype(str).str.lower().str.contains(search_norm, na=False, regex=False)
-            | visible["arquivo_b"].astype(str).str.lower().str.contains(search_norm, na=False, regex=False)
+            visible["arquivo_a"].astype(str).str.lower().str.contains(search_norm, na=False)
+            | visible["arquivo_b"].astype(str).str.lower().str.contains(search_norm, na=False)
         ]
     if selected_tol != "Todas":
         visible = visible[visible["tolerancia"].astype(float) == float(selected_tol.replace("R$", "").strip())]
@@ -5830,13 +4397,11 @@ def update_processing_view(status_box, current_step, progress_value, progress_te
 def clear_audit_workspace():
     clear_export_caches()
     reset_audit_state()
-    cleanup_all_temp_upload_files()
     for key in list(st.session_state.keys()):
         if key.startswith("up_a_widget_") or key.startswith("up_b_widget_"):
             st.session_state.pop(key, None)
     for prefix in ["up_a", "up_b"]:
         st.session_state.pop(f"{prefix}_stored", None)
-        st.session_state.pop(f"{prefix}_error", None)
         st.session_state.pop(prefix, None)
         version_key = f"{prefix}_widget_version"
         st.session_state[version_key] = int(st.session_state.get(version_key, 0) or 0) + 1
@@ -5851,27 +4416,20 @@ def clear_audit_workspace():
 def render_app_header():
     st.markdown(
         f"""
-        <div class="fv-surface-card fv-topbar-shell">
-            <div class="fv-topbar-search">
-                <div class="fv-topbar-search-copy">
-                    <span class="fv-topbar-search-icon">{svg_icon("search", 18)}</span>
-                    <span>Buscar auditorias, relat&oacute;rios, clientes...</span>
-                </div>
-                <span class="fv-kbd">&#8984; K</span>
-            </div>
-            <div class="fv-topbar-actions">
-                <div class="fv-bell">
-                    {svg_icon("bell", 18)}
-                    <span class="fv-bell-badge">3</span>
-                </div>
-                <div class="fv-status-pill"><span></span>Online</div>
-                <div class="fv-user-chip">
-                    <div class="fv-user-avatar">MS</div>
-                    <div class="fv-user-meta">
-                        <strong>Mateus Santos</strong>
-                        <span>Administrador</span>
+        <div class="compact-header-shell">
+            <div class="compact-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+                    <div class="compact-brand">
+                        <div class="compact-brand-mark">{fretevision_mark(48)}</div>
+                        <div>
+                            <div class="compact-brand-title">FRETE<strong>VISION</strong></div>
+                            <div class="compact-brand-subtitle">{safe_text(BRAND_TAGLINE)}</div>
+                        </div>
                     </div>
-                    <div class="fv-topbar-caret">&#9662;</div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span class="upload-ready-chip">Nova Auditoria</span>
+                        <span class="header-status-pill">Online</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -5881,180 +4439,120 @@ def render_app_header():
 
 
 def render_compact_menu():
-    valid_pages = {page_id for page_id, _, _ in NAV_ITEMS}
-    if "main_page" not in st.session_state or st.session_state.main_page not in valid_pages:
-        st.session_state.main_page = "nova_auditoria"
-    return st.session_state.main_page
+    pages = ["Auditoria", "Visão que move resultados", "Suporte Técnico", "Novidades"]
+    if "main_page" not in st.session_state or st.session_state.main_page not in pages:
+        st.session_state.main_page = "Auditoria"
+    st.markdown('<div class="menu-shell"><div class="menu-caption">Menu</div></div>', unsafe_allow_html=True)
+    return st.radio(
+        "Menu principal",
+        pages,
+        key="main_page",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
 
 def render_tolerance_section():
-    current_tol = round(float(st.session_state.get("tol", 0.50) or 0.50), 2)
-    presets = {
-        "R$ 0,00": 0.0,
-        "R$ 0,30": 0.30,
-        "R$ 0,50": 0.50,
-        "R$ 1,00": 1.0,
-        "Personalizado": None,
-    }
-    default_label = next((label for label, value in presets.items() if value is not None and round(value, 2) == current_tol), "Personalizado")
+    with st.container(border=True):
+        head_left, head_right = st.columns([7, 1.35], gap="small")
+        with head_left:
+            st.markdown(
+                """
+                <div class="section-head">
+                    <h3 class="section-title">Nova Auditoria</h3>
+                    <div class="section-subtitle">Configure a tolerância e envie os dois relatórios do mesmo período.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with head_right:
+            if st.button("Limpar", key="clear_workspace", use_container_width=True):
+                clear_audit_workspace()
+                st.rerun()
 
-    st.markdown('<div class="fv-tolerance-block"><div class="fv-section-label">Tolerância de diferença</div>', unsafe_allow_html=True)
-    selected = st.pills(
-        "Tolerância de diferença",
-        list(presets.keys()),
-        selection_mode="single",
-        default=default_label,
-        required=True,
-        key="fv_tolerance_selector",
-        label_visibility="collapsed",
-    )
-    selected = selected or default_label
-    value = presets[selected]
-    if value is None:
-        st.markdown('<div class="fv-custom-tolerance">', unsafe_allow_html=True)
-        value = st.number_input(
-            "Valor personalizado (R$)",
-            min_value=0.0,
-            max_value=999.0,
-            value=current_tol,
-            step=0.10,
-            format="%.2f",
-            key="fv_tolerance_custom_value",
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-    return float(value)
+        label_col, radio_col = st.columns([1.6, 6], gap="small")
+        with label_col:
+            st.markdown('<div class="compact-field-label">Tolerância de diferença</div>', unsafe_allow_html=True)
+        with radio_col:
+            opts = {"R$ 0,00": 0.0, "R$ 0,30": 0.30, "R$ 0,50": 0.50, "R$ 1,00": 1.0, "Personalizado": -1}
+            selected = st.radio("Tolerância", list(opts.keys()), index=2, horizontal=True, label_visibility="collapsed")
+            value = opts[selected]
+            if value == -1:
+                value = st.number_input("Valor personalizado (R$)", 0.0, 999.0, 0.50, 0.10, format="%.2f")
+        return value
 
 
-def render_upload_box(title, description, key, tone=None):
+def render_upload_box(title, description, key):
     stored_key = f"{key}_stored"
     version_key = f"{key}_widget_version"
-    error_key = f"{key}_error"
-    tone = tone or ("green" if key == "up_b" else "violet")
     legacy_upload = st.session_state.get(key)
     if st.session_state.get(stored_key) is None and legacy_upload is not None and hasattr(legacy_upload, "getvalue"):
-        try:
-            st.session_state[stored_key] = serialize_uploaded_file(legacy_upload)
-            st.session_state.pop(error_key, None)
-        except ValueError as exc:
-            st.session_state.pop(stored_key, None)
-            st.session_state[error_key] = ui(str(exc))
-            st.session_state[version_key] = int(st.session_state.get(version_key, 0) or 0) + 1
+        st.session_state[stored_key] = serialize_uploaded_file(legacy_upload)
         st.session_state.pop(key, None)
 
     current_file = st.session_state.get(stored_key)
     widget_version = int(st.session_state.get(version_key, 0) or 0)
     widget_key = f"{key}_widget_{widget_version}"
-    upload_error = st.session_state.get(error_key)
-    limit_mb = MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)
 
-    with st.container():
+    with st.container(border=True):
         st.markdown(
             f"""
-            <div class="fv-upload-card">
-                <div class="fv-upload-head">
-                    <div class="fv-upload-icon {safe_text(tone)}">{icon_doc(22)}</div>
-                    <div>
-                        <div class="fv-upload-title">{safe_text(title)}</div>
-                        <div class="fv-upload-subtitle">{safe_text(description)}</div>
-                    </div>
-                </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if upload_error:
-            st.error(upload_error)
-
-        if current_file is None:
-            uploaded = st.file_uploader(title, type=["pdf"], key=widget_key, label_visibility="collapsed")
-            if uploaded:
-                try:
-                    st.session_state[stored_key] = serialize_uploaded_file(uploaded)
-                    st.session_state.pop(error_key, None)
-                except ValueError as exc:
-                    st.session_state.pop(stored_key, None)
-                    st.session_state[error_key] = ui(str(exc))
-                    st.session_state.pop(widget_key, None)
-                    st.session_state[version_key] = widget_version + 1
-                    reset_audit_state()
-                    st.rerun()
-                st.session_state.pop(widget_key, None)
-                st.rerun()
-            st.markdown(
-                f"""
-                <div class="fv-upload-foot">
-                    <span>Formatos aceitos: PDF</span>
-                    <span>Tamanho máximo: {limit_mb}MB</span>
-                </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            return None
-
-        st.session_state.pop(error_key, None)
-        st.markdown(
-            f"""
-            <div class="fv-file-ready">
+            <div class="upload-panel-head">
+                <div class="upload-panel-icon">{icon_doc(18)}</div>
                 <div>
-                    <strong>{safe_text(get_upload_name(current_file))}</strong>
-                    <span>Arquivo selecionado • {safe_text(file_size(current_file))}</span>
+                    <div class="upload-panel-title">{safe_text(title)}</div>
+                    <div class="upload-panel-subtitle">{safe_text(description)}</div>
                 </div>
-                <div class="fv-status-pill"><span></span>Pronto</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="fv-upload-actions">', unsafe_allow_html=True)
+
+        if current_file is None:
+            uploaded = st.file_uploader(title, type=["pdf"], key=widget_key, label_visibility="collapsed")
+            if uploaded:
+                st.session_state[stored_key] = serialize_uploaded_file(uploaded)
+                st.session_state.pop(widget_key, None)
+                st.rerun()
+            return None
+
+        st.markdown(
+            f"""
+            <div class="upload-ready-bar">
+                <span class="upload-ready-state"><span class="upload-ready-dot"></span>Arquivo carregado</span>
+                <span class="upload-ready-chip">{safe_text(get_upload_name(current_file))} • {safe_text(file_size(current_file))}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         action_col_a, action_col_b = st.columns(2, gap="small")
         with action_col_a:
-            if st.button("Trocar arquivo", key=f"{key}_replace", use_container_width=True, icon=":material/swap_horiz:"):
+            if st.button("Trocar arquivo", key=f"{key}_replace", use_container_width=True):
                 st.session_state.pop(stored_key, None)
                 st.session_state.pop(widget_key, None)
-                st.session_state.pop(error_key, None)
                 st.session_state[version_key] = widget_version + 1
                 reset_audit_state()
                 st.session_state.audit_error = None
                 st.session_state.audit_error_details = []
                 st.rerun()
         with action_col_b:
-            if st.button("Remover arquivo", key=f"{key}_remove", use_container_width=True, icon=":material/delete:"):
+            if st.button("Remover arquivo", key=f"{key}_remove", use_container_width=True):
                 st.session_state.pop(stored_key, None)
                 st.session_state.pop(widget_key, None)
-                st.session_state.pop(error_key, None)
                 st.session_state[version_key] = widget_version + 1
                 reset_audit_state()
                 st.session_state.audit_error = None
                 st.session_state.audit_error_details = []
                 st.rerun()
-        st.markdown(
-            f"""
-            </div>
-            <div class="fv-upload-foot">
-                <span>Formatos aceitos: PDF</span>
-                <span>Tamanho máximo: {limit_mb}MB</span>
-            </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
         return current_file
 
 
 def render_upload_section():
-    st.markdown('<div class="fv-upload-section">', unsafe_allow_html=True)
-    col_a, bridge_col, col_b = st.columns([1, 0.16, 1], gap="medium")
+    col_a, col_b = st.columns(2, gap="medium")
     with col_a:
-        file_a = render_upload_box("Sistema A (Relatório DL)", "Upload do relatório principal da empresa.", "up_a", "violet")
-    with bridge_col:
-        st.markdown(
-            f'<div class="fv-upload-bridge"><div class="fv-upload-bridge-node">{svg_icon("compare", 22)}</div></div>',
-            unsafe_allow_html=True,
-        )
+        file_a = render_upload_box("Sistema A (Relatório DL)", "Upload do relatório principal da empresa.", "up_a")
     with col_b:
         file_b = render_upload_box("Sistema B (Relatório Carreteiro)", "Upload do relatório de conferência.", "up_b")
-    st.markdown("</div>", unsafe_allow_html=True)
     return file_a, file_b
 
 
@@ -6322,343 +4820,28 @@ def render_news_page():
         )
 
 
-def render_dashboard_sidebar(current_page):
-    st.markdown(
-        f"""
-        <div class="fv-surface-card fv-sidebar-shell fv-sticky">
-            <div class="fv-brand">
-                <div class="fv-brand-mark">{fretevision_mark(56)}</div>
-                <div>
-                    <div class="fv-brand-name"><span>FRETE</span> <strong>VISION</strong></div>
-                    <div class="fv-brand-tagline">{safe_text(BRAND_TAGLINE)}</div>
-                </div>
-            </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="fv-sidebar-nav">', unsafe_allow_html=True)
-    for page_id, label, icon in NAV_ITEMS:
-        if st.button(
-            label,
-            key=f"fv_nav_{page_id}",
-            icon=icon,
-            use_container_width=True,
-            type="primary" if current_page == page_id else "secondary",
-        ):
-            st.session_state.main_page = page_id
-            st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+def render_footer():
     st.markdown(
         """
-        <div class="fv-plan-card-wrap">
-            <div class="fv-plan-card">
-                <div class="fv-plan-kicker">Plano Empresarial</div>
-                <div class="fv-plan-copy">Aproveite todos os recursos avançados da plataforma.</div>
-        """,
-        unsafe_allow_html=True,
-    )
-    if st.button("Ver plano", key="fv_sidebar_plan", use_container_width=True):
-        st.session_state.main_page = "configuracoes"
-        st.rerun()
-    st.markdown(
-        """
-            </div>
-        </div>
-        <div class="fv-sidebar-footer">
+        <div class="compact-footer">
             © 2026 FreteVision Logística<br>
             Desenvolvido por Mateus
         </div>
-        </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def render_dashboard_kpi_row():
-    cards_html = []
-    for item in build_dashboard_kpis():
-        delta_class = safe_text(item.get("delta_class") or "")
-        cards_html.append(
-            f'<div class="fv-kpi-card"><div class="fv-kpi-head"><div class="fv-kpi-icon {safe_text(item["tone"])}">{item["icon"]}</div>'
-            f'<div class="fv-kpi-copy"><small>{safe_text(item["label"])}</small><b>{safe_text(item["value"])}</b>'
-            f'<span class="{delta_class}">{safe_text(item["delta"])}</span></div></div>{item["spark"]}</div>'
-        )
-    st.markdown(f'<div class="fv-kpi-grid">{"".join(cards_html)}</div>', unsafe_allow_html=True)
+render_app_header()
+page = render_compact_menu()
 
+if page == "Visão que move resultados":
+    render_marketing_page()
 
-def render_insights_panel():
-    insights = [
-        "Comparar valores e identificar divergências",
-        "Detectar cobranças indevidas",
-        "Validar regras e políticas aplicadas",
-        "Gerar relatório detalhado",
-        "Calcular economia potencial",
-    ]
-    recent_items = build_recent_audits()
-    checklist_html = "".join(
-        f'<div class="fv-check-item"><span class="fv-check-badge">{svg_icon("check", 14)}</span><span>{safe_text(item)}</span></div>'
-        for item in insights
-    )
-    recent_html = []
-    for item in recent_items:
-        status = str(item.get("status", "Concluída"))
-        status_class = "running" if "análise" in status.lower() else "complete"
-        recent_html.append(
-            f'<div class="fv-recent-item"><div class="fv-recent-top"><div><div class="fv-recent-code">{safe_text(item.get("codigo", "AUD-2026-00000"))}</div>'
-            f'<div class="fv-recent-time">{safe_text(item.get("momento", "Hoje, 09:32"))}</div></div>'
-            f'<div class="fv-status-tag {status_class}">{safe_text(status)}</div></div>'
-            f'<div class="fv-recent-value">Valor: {safe_text(item.get("valor", "—"))}</div></div>'
-        )
+elif page == "Auditoria":
+    tolerance = render_tolerance_section()
+    file_a, file_b = render_upload_section()
 
-    st.markdown(
-        f"""
-        <div class="fv-right-stack fv-sticky">
-            <div class="fv-surface-card fv-insights-shell">
-                <div class="fv-insights-title">
-                    <span>{svg_icon("spark", 18)}Insights automáticos</span>
-                    <span>⌃</span>
-                </div>
-                <div class="fv-insights-copy">Ao enviar os relatórios, nossa IA irá:</div>
-                <div class="fv-check-list">{checklist_html}</div>
-                <div class="fv-panel-divider"></div>
-                <div class="fv-latest-head">
-                    <b>Últimas auditorias</b>
-                    <span class="fv-link">Ver todas</span>
-                </div>
-                <div class="fv-recent-list">{"".join(recent_html)}</div>
-                <div class="fv-panel-divider"></div>
-                <div class="fv-tip-card">
-                    <div class="fv-check-badge">{svg_icon("bulb", 14)}</div>
-                    <div>
-                        <strong>Dica</strong>
-                        <span>Mantenha os relatórios do mesmo período para análises mais precisas.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_empty_state(title, description):
-    st.markdown(
-        f"""
-        <div class="fv-surface-card fv-page-card">
-            <div class="fv-empty-state">
-                <div style="display:flex;justify-content:center;margin-bottom:12px;color:#6d5dfb;">{svg_icon("spark", 20)}</div>
-                <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">{safe_text(title)}</div>
-                <div style="margin-top:8px;line-height:1.6;">{safe_text(description)}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def reset_audit_state():
-    cleanup_session_temp_files()
-    for key in ["df_res", "resumo", "nome_a", "nome_b", "tol", "audit_debug", "audit_runtime", "audit_timings"]:
-        st.session_state.pop(key, None)
-
-
-def build_dashboard_kpis():
-    history = auditoria_io.carregar_historico()
-    today_prefix = datetime.now().strftime("%d/%m/%Y")
-    today_count = sum(1 for item in history if str(item.get("data_hora", "")).startswith(today_prefix))
-    session_meta = build_session_audit_meta()
-    current_summary = st.session_state.get("resumo") or {}
-    divergences = int(current_summary.get("divergentes", 0) or 0)
-    latest_history = history[0] if history else {}
-    impact_value = current_summary.get("impacto_absoluto", 0) or latest_history.get("impacto_absoluto", 0) or 0
-    runtime_label = session_meta["runtime_label"] if session_meta else "Aguardando"
-    return [
-        {
-            "label": "Auditorias hoje",
-            "value": str(today_count),
-            "delta": f"{len(history)} salvas no hist\u00f3rico" if history else "Nenhuma salva ainda",
-            "tone": "blue",
-            "icon": svg_icon("spark", 20),
-            "spark": sparkline_svg("#5b6dfb", [32, 18, 70, 28, 34, 30, 33, 75, 70, 90]),
-            "delta_class": "blue",
-        },
-        {
-            "label": "Diverg\u00eancias",
-            "value": str(divergences),
-            "delta": "Sess\u00e3o atual" if session_meta else "Aguardando compara\u00e7\u00e3o",
-            "tone": "red",
-            "icon": svg_icon("alert", 20),
-            "spark": sparkline_svg("#f43f5e", [84, 75, 66, 52, 57, 33, 25, 44, 52, 48]),
-            "delta_class": "red",
-        },
-        {
-            "label": "Impacto cr\u00edtico",
-            "value": br_money(impact_value),
-            "delta": "Sess\u00e3o atual" if session_meta else "\u00daltima auditoria salva",
-            "tone": "green",
-            "icon": svg_icon("dollar", 20),
-            "spark": sparkline_svg("#10b981", [22, 38, 34, 56, 61, 49, 63, 54, 78, 86]),
-            "delta_class": "",
-        },
-        {
-            "label": "Tempo da auditoria",
-            "value": runtime_label,
-            "delta": "\u00daltima auditoria" if session_meta else "Sem execu\u00e7\u00e3o nesta sess\u00e3o",
-            "tone": "blue",
-            "icon": svg_icon("clock", 20),
-            "spark": sparkline_svg("#2563eb", [64, 48, 18, 56, 82, 42, 36, 48, 30, 32]),
-            "delta_class": "",
-        },
-    ]
-
-
-def render_audit_context_strip():
-    session_meta = build_session_audit_meta()
-    tolerance_label = br_money(st.session_state.get("tol", 0.50))
-    speed_value = session_meta["runtime_label"] if session_meta else "Leitura r\u00e1pida"
-    speed_caption = (
-        f"\u00daltima auditoria conclu\u00edda em {session_meta['runtime_label']}."
-        if session_meta and session_meta["runtime_raw"] is not None
-        else "Upload, leitura, cruzamento e relat\u00f3rio em uma \u00fanica rodada."
-    )
-    cards = [
-        ("Compara\u00e7\u00e3o", "ATUA x GW", "Use relat\u00f3rios do mesmo per\u00edodo para evitar falsos faltantes."),
-        ("Toler\u00e2ncia ativa", tolerance_label, "Diferen\u00e7as abaixo desse valor seguem vis\u00edveis, mas n\u00e3o entram no impacto cr\u00edtico."),
-        ("Velocidade", speed_value, speed_caption),
-        ("Sa\u00eddas prontas", "CSV, Excel e 2 PDFs", "Confer\u00eancia detalhada e vers\u00e3o executiva liberadas no mesmo fluxo."),
-    ]
-    cards_html = "".join(
-        f'<div class="fv-brief-card"><small>{safe_text(label)}</small><b>{safe_text(value)}</b><span>{safe_text(caption)}</span></div>'
-        for label, value, caption in cards
-    )
-    st.markdown(f'<div class="fv-audit-brief-grid">{cards_html}</div>', unsafe_allow_html=True)
-
-
-def render_upload_section():
-    st.markdown('<div class="fv-upload-section">', unsafe_allow_html=True)
-    col_a, bridge_col, col_b = st.columns([1, 0.16, 1], gap="medium")
-    with col_a:
-        file_a = render_upload_box("Sistema A (ATUA)", "Upload do relat\u00f3rio principal da empresa.", "up_a", "violet")
-    with bridge_col:
-        st.markdown(
-            f'<div class="fv-upload-bridge"><div class="fv-upload-bridge-node">{svg_icon("compare", 22)}</div></div>',
-            unsafe_allow_html=True,
-        )
-    with col_b:
-        file_b = render_upload_box("Sistema B (GW)", "Upload do relat\u00f3rio de confer\u00eancia.", "up_b")
-    st.markdown("</div>", unsafe_allow_html=True)
-    return file_a, file_b
-
-
-def render_kpis(resumo, df):
-    faltantes_total = int(resumo["faltantes_a"]) + int(resumo["faltantes_b"])
-    tolerance_text = br_money(st.session_state.get("tol", 0.50))
-    runtime_label = format_duration_label(st.session_state.get("audit_runtime"))
-    summary_html = (
-        '<div class="section-head" style="margin-top:10px;">'
-        '<h3 class="section-title">Resumo da auditoria</h3>'
-        '<div class="section-subtitle">Resultado direto da compara\u00e7\u00e3o entre os dois relat\u00f3rios processados.</div>'
-        '</div>'
-        '<div class="summary-grid">'
-        f'<div class="summary-card"><small>Total analisado</small><b>{safe_text(resumo["total"])}</b><span>Toler\u00e2ncia: {safe_text(tolerance_text)}</span></div>'
-        f'<div class="summary-card ok"><small>OK</small><b>{safe_text(resumo["ok"])}</b><span>Sem diferen\u00e7a identificada</span></div>'
-        f'<div class="summary-card round"><small>OK Arred.</small><b>{safe_text(resumo["ok_arredondamento"])}</b><span>Diferen\u00e7as dentro da toler\u00e2ncia</span></div>'
-        f'<div class="summary-card div"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b><span>Acima da toler\u00e2ncia configurada</span></div>'
-        f'<div class="summary-card miss"><small>Faltantes</small><b>{safe_text(faltantes_total)}</b><span>No A: {safe_text(resumo["faltantes_a"])} • No B: {safe_text(resumo["faltantes_b"])}</span></div>'
-        f'<div class="summary-card impact"><small>Impacto cr\u00edtico total</small><b>{safe_text(br_money(resumo["impacto_absoluto"]))}</b><span>N\u00e3o inclui OK por arredondamento</span></div>'
-        '</div>'
-        '<div class="summary-note">Diferen\u00e7as dentro da toler\u00e2ncia continuam vis\u00edveis para confer\u00eancia na tabela, mas n\u00e3o comp\u00f5em o impacto cr\u00edtico.</div>'
-    )
-    meta_cards = [
-        ("Tempo total", runtime_label, "Execucao completa da ultima auditoria."),
-        ("Leitura e cruzamento", format_duration_label((st.session_state.get("audit_timings") or {}).get("Leitura e cruzamento")), "Etapa principal de validacao dos CTEs."),
-        ("Arquivos comparados", f'{safe_text(st.session_state.get("nome_a", "ATUA"))} x {safe_text(st.session_state.get("nome_b", "GW"))}', "Base operacional usada nesta sessao."),
-        ("Exportacoes", "4 formatos liberados", "CSV, Excel, PDF executivo e PDF detalhado."),
-    ]
-    meta_html = "".join(
-        f'<div class="fv-summary-meta-card"><small>{label}</small><b>{value}</b><span>{caption}</span></div>'
-        for label, value, caption in meta_cards
-    )
-    st.markdown(summary_html + f'<div class="fv-summary-meta">{meta_html}</div>', unsafe_allow_html=True)
-
-
-def render_insights_panel():
-    session_meta = build_session_audit_meta()
-    title = "Insights autom\u00e1ticos"
-    if session_meta:
-        copy = (
-            f'\u00daltima auditoria conclu\u00edda em <b>{safe_text(session_meta["runtime_label"])}</b> '
-            f'com <b>{safe_text(session_meta["total"])}</b> CTEs comparados.'
-        )
-        insights = [
-            f'{session_meta["total"]} CTEs cruzados entre ATUA e GW',
-            f'{session_meta["divergentes"]} diverg\u00eancias acima da toler\u00e2ncia',
-            f'{session_meta["faltantes"]} faltantes entre os relat\u00f3rios',
-            f'Impacto cr\u00edtico atual: {session_meta["impacto_label"]}',
-            "Exporta\u00e7\u00f5es prontas para confer\u00eancia e apresenta\u00e7\u00e3o",
-        ]
-        tip_title = "\u00daltima compara\u00e7\u00e3o"
-        tip_copy = f'{session_meta["arquivo_a"]} x {session_meta["arquivo_b"]}'
-    else:
-        copy = "Ao enviar os relat\u00f3rios, o motor vai:"
-        insights = [
-            "Comparar valores e identificar diverg\u00eancias",
-            "Detectar cobran\u00e7as indevidas",
-            "Validar regras e pol\u00edticas aplicadas",
-            "Gerar relat\u00f3rio detalhado",
-            "Liberar CSV, Excel e PDFs no mesmo fluxo",
-        ]
-        tip_title = "Dica"
-        tip_copy = "Mantenha os relat\u00f3rios do mesmo per\u00edodo para an\u00e1lises mais precisas."
-
-    recent_items = build_recent_audits()
-    checklist_html = "".join(
-        f'<div class="fv-check-item"><span class="fv-check-badge">{svg_icon("check", 14)}</span><span>{safe_text(item)}</span></div>'
-        for item in insights
-    )
-    recent_html = []
-    for item in recent_items:
-        status = str(item.get("status", "Concluida"))
-        status_class = "running" if "anal" in ui(status).lower() else "complete"
-        recent_html.append(
-            f'<div class="fv-recent-item"><div class="fv-recent-top"><div><div class="fv-recent-code">{safe_text(item.get("codigo", "AUD-2026-00000"))}</div>'
-            f'<div class="fv-recent-time">{safe_text(item.get("momento", "Hoje, 09:32"))}</div></div>'
-            f'<div class="fv-status-tag {status_class}">{safe_text(status)}</div></div>'
-            f'<div class="fv-recent-value">Valor: {safe_text(item.get("valor", "-"))}</div></div>'
-        )
-
-    st.markdown(
-        f"""
-        <div class="fv-right-stack fv-sticky">
-            <div class="fv-surface-card fv-insights-shell">
-                <div class="fv-insights-title">
-                    <span>{svg_icon("spark", 18)}{safe_text(title)}</span>
-                    <span>{safe_text(format_duration_label(st.session_state.get("audit_runtime")) if session_meta else "Pronto")}</span>
-                </div>
-                <div class="fv-insights-copy">{copy}</div>
-                <div class="fv-check-list">{checklist_html}</div>
-                <div class="fv-panel-divider"></div>
-                <div class="fv-latest-head">
-                    <b>Ultimas auditorias</b>
-                    <span class="fv-link">Ver todas</span>
-                </div>
-                <div class="fv-recent-list">{"".join(recent_html)}</div>
-                <div class="fv-panel-divider"></div>
-                <div class="fv-tip-card">
-                    <div class="fv-check-badge">{svg_icon("bulb", 14)}</div>
-                    <div>
-                        <strong>{safe_text(tip_title)}</strong>
-                        <span>{safe_text(tip_copy)}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_nova_auditoria_page():
     if "processing" not in st.session_state:
         st.session_state.processing = False
     if "audit_error" not in st.session_state:
@@ -6668,47 +4851,9 @@ def render_nova_auditoria_page():
     if "audit_debug" not in st.session_state:
         st.session_state.audit_debug = None
 
-    head_left, head_right = st.columns([6.5, 1.7], gap="medium")
-    with head_left:
-        st.markdown(
-            f"""
-            <div class="fv-main-head">
-                <div class="fv-main-title-wrap">
-                    <div class="fv-main-icon">{svg_icon("spark", 20)}</div>
-                    <div>
-                        <div class="fv-main-title">Nova Auditoria</div>
-                        <div class="fv-main-subtitle">
-                            Configure a tolerância e envie os dois relatórios do mesmo período para iniciar a análise.
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with head_right:
-        st.markdown('<div class="fv-main-head-actions">', unsafe_allow_html=True)
-        if st.button("Limpar", key="clear_workspace", use_container_width=True, icon=":material/refresh:"):
-            clear_audit_workspace()
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    tolerance = render_tolerance_section()
-    file_a, file_b = render_upload_section()
-
-    st.markdown('<div class="fv-primary-cta">', unsafe_allow_html=True)
-    clicked = st.button(
-        "Iniciar Auditoria",
-        type="primary",
-        use_container_width=True,
-        disabled=st.session_state.processing or not (file_a and file_b),
-        icon=":material/rocket_launch:",
-    )
-    st.markdown('<div class="fv-primary-subtitle">A análise será executada automaticamente</div></div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="fv-security-note">{svg_icon("shield", 16)}<span>Seus dados estão seguros e criptografados.</span></div>',
-        unsafe_allow_html=True,
-    )
+    button_col_1, button_col_2, button_col_3 = st.columns([1.7, 1.5, 1.7])
+    with button_col_2:
+        clicked = st.button("Iniciar Auditoria", type="primary", use_container_width=True, disabled=st.session_state.processing)
 
     status_box = st.empty()
     debug_box = st.empty()
@@ -6719,12 +4864,9 @@ def render_nova_auditoria_page():
             render_audit_debug()
 
     if st.session_state.audit_error and not st.session_state.processing:
-        with status_box.container():
-            st.error(st.session_state.audit_error)
-            if st.session_state.audit_error_details:
-                st.markdown("**Detalhes técnicos**")
-                for detail in st.session_state.audit_error_details:
-                    st.write(f"- {detail}")
+        status_box.error(st.session_state.audit_error)
+        for detail in st.session_state.audit_error_details:
+            st.error(f"- {detail}")
 
     if clicked:
         st.session_state.processing = True
@@ -6766,9 +4908,7 @@ def render_nova_auditoria_page():
             result_df = linhas_para_dataframe(resultado["linhas"])
             result_df = aplicar_margens_gw_visual(result_df, caminho_b)
             result_df = ensure_gw_margin_visual(result_df, caminho_b)
-            summary_motor = normalizar_resumo_motor(resultado["resumo"])
-            summary_df = auditoria_io.gerar_resumo_df(result_df)
-            summary = {**summary_motor, **summary_df}
+            summary = normalizar_resumo_motor(resultado["resumo"])
             timings["Pós-processamento"] = perf_counter() - step_started_at
 
             set_audit_debug(
@@ -6781,6 +4921,14 @@ def render_nova_auditoria_page():
 
             with debug_box.container():
                 render_audit_debug()
+
+            erros_zero_cte = []
+            if not resultado["registros_a"]:
+                erros_zero_cte.append("ATUA retornou 0 CTEs.")
+            if not resultado["registros_b"]:
+                erros_zero_cte.append("GW retornou 0 CTEs.")
+            if erros_zero_cte:
+                set_audit_error("Falha na leitura dos PDFs.", erros_zero_cte)
 
             update_processing_view(status_box, 5, 92, "Gerando relatório")
             step_started_at = perf_counter()
@@ -6797,7 +4945,6 @@ def render_nova_auditoria_page():
                 timings=timings,
             )
 
-            cleanup_session_temp_files()
             st.session_state.update(
                 {
                     "df_res": result_df,
@@ -6805,8 +4952,6 @@ def render_nova_auditoria_page():
                     "nome_a": get_upload_name(file_a),
                     "nome_b": get_upload_name(file_b),
                     "tol": tolerance,
-                    "audit_runtime": timings.get("Total"),
-                    "audit_timings": dict(timings),
                     "caminho_a_temp": caminho_a,
                     "caminho_b_temp": caminho_b,
                 }
@@ -6822,16 +4967,16 @@ def render_nova_auditoria_page():
                 warn_b = [mensagem]
             timings["Total até erro"] = perf_counter() - started_at
             set_audit_debug(warn_a=warn_a, warn_b=warn_b, caminho_a=caminho_a, caminho_b=caminho_b, timings=timings)
-            cleanup_temp_file(caminho_a)
-            cleanup_temp_file(caminho_b)
-            set_audit_error(titulo_erro_processamento(mensagem), [mensagem])
+            set_audit_error(
+                titulo_erro_processamento(mensagem),
+                [mensagem],
+            )
 
         st.session_state.processing = False
         st.rerun()
 
     if st.session_state.get("df_res") is not None and not st.session_state["df_res"].empty:
         with results_box.container():
-            st.markdown('<div class="fv-surface-card fv-page-card fv-results-stack">', unsafe_allow_html=True)
             result = ensure_gw_margin_visual(st.session_state["df_res"], st.session_state.get("caminho_b_temp"))
             if not result.equals(st.session_state["df_res"]):
                 st.session_state["df_res"] = result
@@ -6841,82 +4986,11 @@ def render_nova_auditoria_page():
             render_chart(result)
             render_table(result)
             render_exports(result, summary, st.session_state["nome_a"], st.session_state["nome_b"], st.session_state["tol"])
-            st.markdown("</div>", unsafe_allow_html=True)
 
+elif page == "Suporte Técnico":
+    render_support_page()
+elif page == "Novidades":
+    render_news_page()
 
-def render_page_content(current_page):
-    if current_page == "nova_auditoria":
-        render_nova_auditoria_page()
-    elif current_page == "visao_geral":
-        render_marketing_page()
-    elif current_page == "auditorias":
-        render_history_page()
-    elif current_page == "relatorios":
-        render_reports_page()
-    elif current_page == "divergencias":
-        df = st.session_state.get("df_res")
-        if df is not None and not df.empty:
-            st.markdown('<div class="fv-surface-card fv-page-card">', unsafe_allow_html=True)
-            render_table(df)
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            render_empty_state("Nenhuma divergência carregada", "Execute uma auditoria para visualizar as divergências identificadas.")
-    elif current_page == "economia":
-        df = st.session_state.get("df_res")
-        summary = st.session_state.get("resumo")
-        if df is not None and not df.empty and summary:
-            st.markdown('<div class="fv-surface-card fv-page-card fv-results-stack">', unsafe_allow_html=True)
-            render_kpis(summary, df)
-            render_chart(df)
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            render_empty_state("Economia ainda não calculada", "Conclua uma auditoria para visualizar impacto, tempo médio e ganhos potenciais.")
-    elif current_page == "integracoes":
-        render_empty_state("Integrações em preparação", "Esse espaço vai concentrar conexões com TMS, ERPs e fluxos automatizados sem alterar o backend atual.")
-    elif current_page == "configuracoes":
-        render_settings_page()
-    elif current_page == "suporte":
-        render_support_page()
-    else:
-        render_news_page()
+render_footer()
 
-
-def render_dashboard_shell():
-    current_page = render_compact_menu()
-    st.markdown('<div class="fv-shell-root">', unsafe_allow_html=True)
-    shell_left, shell_rest = st.columns([0.92, 5.08], gap="medium")
-
-    with shell_left:
-        st.markdown('<div class="fv-shell-left">', unsafe_allow_html=True)
-        render_dashboard_sidebar(current_page)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with shell_rest:
-        st.markdown('<div class="fv-shell-main">', unsafe_allow_html=True)
-        render_app_header()
-        render_dashboard_kpi_row()
-        main_col, right_col = st.columns([3.7, 1.1], gap="medium")
-        with main_col:
-            render_page_content(current_page)
-        with right_col:
-            st.markdown('<div class="fv-shell-right">', unsafe_allow_html=True)
-            render_insights_panel()
-            st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-def render_footer():
-    st.markdown(
-        """
-        <div class="compact-footer">
-            © 2026 FreteVision Logística<br>
-            Desenvolvido por Mateus
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-render_dashboard_shell()
