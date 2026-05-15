@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import pdfplumber
+import fitz
 
 
 CENTAVOS = Decimal("0.01")
@@ -26,8 +27,13 @@ RE_MONEY_BR = re.compile(r"^-?(?:\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+\.\d{2})
 MONEY_RE = re.compile(r"-?(?:\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+\.\d{2})")
 RE_PESO_TON = re.compile(r"^\d{1,3},\d{3}$")
 RE_PERCENT = re.compile(r"^-?\d{1,3},\d{2}%$")
+RE_CTE_PR_GW = re.compile(r"^\d{6}$")
 MAX_PDF_PAGE_COUNT = 300
 MAX_HISTORY_ENTRIES = 100
+LAST_PARSE_INFO = {
+    "atual": {"formato": "desconhecido", "ctes": 0},
+    "gw": {"formato": "desconhecido", "ctes": 0},
+}
 
 
 def parse_money_br(value) -> Optional[Decimal]:
@@ -116,6 +122,19 @@ def normalizar_cte(value) -> Optional[str]:
     return str(numero)
 
 
+def _is_money_line(value: str) -> bool:
+    return parse_money_br(value) is not None if value else False
+
+
+def _normalizar_cte_pr(value) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text.isdigit():
+        return None
+    return str(int(text))
+
+
 def _selecionar_valores_gw(valores: List[Decimal]) -> tuple[Optional[Decimal], Optional[Decimal]]:
     nao_zero = [valor for valor in valores if valor != Decimal("0.00")]
     if len(nao_zero) >= 2:
@@ -129,20 +148,40 @@ def _selecionar_valores_gw(valores: List[Decimal]) -> tuple[Optional[Decimal], O
 
 def _extrair_linhas_pdfplumber(caminho_pdf):
     linhas = []
-    with pdfplumber.open(str(caminho_pdf)) as pdf:
-        total_paginas = len(pdf.pages)
+    try:
+        with pdfplumber.open(str(caminho_pdf)) as pdf:
+            total_paginas = len(pdf.pages)
+            if total_paginas == 0:
+                raise ValueError("O PDF enviado não possui páginas legíveis.")
+            if total_paginas > MAX_PDF_PAGE_COUNT:
+                raise ValueError(
+                    f"O PDF possui {total_paginas} páginas e excede o limite de {MAX_PDF_PAGE_COUNT} páginas."
+                )
+            for page_num, page in enumerate(pdf.pages, start=1):
+                texto = page.extract_text() or ""
+                for raw in texto.splitlines():
+                    t = raw.strip()
+                    if t:
+                        linhas.append((page_num, t))
+    except Exception:
+        linhas = []
+    if linhas:
+        return linhas
+
+    with fitz.open(str(caminho_pdf)) as pdf:
+        total_paginas = len(pdf)
         if total_paginas == 0:
             raise ValueError("O PDF enviado não possui páginas legíveis.")
         if total_paginas > MAX_PDF_PAGE_COUNT:
             raise ValueError(
                 f"O PDF possui {total_paginas} páginas e excede o limite de {MAX_PDF_PAGE_COUNT} páginas."
             )
-        for page_num, page in enumerate(pdf.pages, start=1):
-            texto = page.extract_text() or ""
+        for idx, page in enumerate(pdf, start=1):
+            texto = page.get_text("text") or ""
             for raw in texto.splitlines():
                 t = raw.strip()
                 if t:
-                    linhas.append((page_num, t))
+                    linhas.append((idx, t))
     return linhas
 
 
@@ -273,13 +312,65 @@ def _extrair_atua_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _extrair_atua_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
+    registros = {}
+    ignorados = 0
+    for idx in range(len(linhas_pdf) - 12):
+        page_num, linha = linhas_pdf[idx]
+        _, prox = linhas_pdf[idx + 1]
+        if not linha.isdigit() or prox != "CT":
+            continue
+
+        cte = _normalizar_cte_pr(linha)
+        if not cte:
+            ignorados += 1
+            continue
+
+        empresa = parse_money_br(linhas_pdf[idx + 10][1]) if idx + 10 < len(linhas_pdf) else None
+        motorista = parse_money_br(linhas_pdf[idx + 11][1]) if idx + 11 < len(linhas_pdf) else None
+
+        if empresa is None or motorista is None:
+            candidatos = []
+            for j in range(idx + 2, min(idx + 20, len(linhas_pdf))):
+                val = parse_money_br(linhas_pdf[j][1])
+                if val is not None:
+                    candidatos.append(val)
+            if len(candidatos) >= 2:
+                empresa, motorista = candidatos[0], candidatos[1]
+
+        if empresa is None or motorista is None:
+            ignorados += 1
+            continue
+
+        registros[cte] = {
+            "cte": cte,
+            "empresa": empresa,
+            "motorista": motorista,
+            "pagina": page_num,
+            "margem": None,
+            "raw": " | ".join(x[1] for x in linhas_pdf[idx: min(idx + 15, len(linhas_pdf))]),
+        }
+    return registros
+
+
 def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
     registros = _extrair_atua_linha_unica(linhas_pdf)
     if registros:
+        LAST_PARSE_INFO["atual"] = {"formato": "ATUA linha única", "ctes": len(registros)}
         return registros
-    return _extrair_atua_multilinha(linhas_pdf)
+    registros = _extrair_atua_multilinha(linhas_pdf)
+    if registros:
+        LAST_PARSE_INFO["atual"] = {"formato": "ATUA multilinha legado", "ctes": len(registros)}
+        return registros
+    texto_total = " ".join(l for _, l in linhas_pdf[:300])
+    if "Relatorio Detalhado do CTRC" in texto_total or "Relatório Detalhado do CTRC" in texto_total:
+        registros = _extrair_atua_pr_multilinha(linhas_pdf)
+        LAST_PARSE_INFO["atual"] = {"formato": "ATUA PR multilinha", "ctes": len(registros)}
+        return registros
+    LAST_PARSE_INFO["atual"] = {"formato": "ATUA desconhecido", "ctes": 0}
+    return {}
 
 
 def _extrair_gw_linha_unica(linhas_pdf) -> Dict[str, Dict[str, Any]]:
@@ -380,13 +471,52 @@ def _extrair_gw_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _extrair_gw_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
+    registros = {}
+    for i, (page_num, linha) in enumerate(linhas_pdf):
+        if not RE_CTE_PR_GW.fullmatch(linha):
+            continue
+        cte = str(int(linha))
+        empresa = parse_money_br(linhas_pdf[i - 4][1]) if i - 4 >= 0 else None
+        motorista = parse_money_br(linhas_pdf[i - 1][1]) if i - 1 >= 0 else None
+        if empresa is None or motorista is None:
+            continue
+
+        margem = None
+        for j in range(i + 1, min(i + 20, len(linhas_pdf))):
+            if RE_PERCENT.fullmatch(linhas_pdf[j][1]):
+                margem = linhas_pdf[j][1]
+                break
+
+        registros[cte] = {
+            "cte": cte,
+            "empresa": empresa,
+            "motorista": motorista,
+            "pagina": page_num,
+            "margem": margem,
+            "raw": " | ".join(x[1] for x in linhas_pdf[max(0, i - 5): min(i + 12, len(linhas_pdf))]),
+        }
+    return registros
+
+
 def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     # Reutiliza a mesma extração textual para evitar varrer o PDF duas vezes.
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
     registros = _extrair_gw_linha_unica(linhas_pdf)
     if registros:
+        LAST_PARSE_INFO["gw"] = {"formato": "GW linha única", "ctes": len(registros)}
         return registros
-    return _extrair_gw_multilinha(linhas_pdf)
+    registros = _extrair_gw_multilinha(linhas_pdf)
+    if registros:
+        LAST_PARSE_INFO["gw"] = {"formato": "GW multilinha legado", "ctes": len(registros)}
+        return registros
+    texto_total = " ".join(l for _, l in linhas_pdf[:400])
+    if "Analise de CTe/NFS com impostos" in texto_total or "Análise de CTe/NFS com impostos" in texto_total:
+        registros = _extrair_gw_pr_multilinha(linhas_pdf)
+        LAST_PARSE_INFO["gw"] = {"formato": "GW PR multilinha", "ctes": len(registros)}
+        return registros
+    LAST_PARSE_INFO["gw"] = {"formato": "GW desconhecido", "ctes": 0}
+    return {}
 
 
 def ler_atua(caminho_pdf):
@@ -597,21 +727,25 @@ def validar_integridade_basica(registros_a, registros_b):
 
 
 def gerar_debug(registros_a, registros_b):
-    def top(registros):
-        saida = []
-        for cte in sorted(registros.keys(), key=lambda x: int(x))[:10]:
-            r = registros[cte]
-            saida.append({
-                "CTE": cte,
-                "Empresa": r["empresa"],
-                "Motorista": r["motorista"],
-                "Página": r.get("pagina")
-            })
-        return saida
+    def top_chaves(registros):
+        ctes = sorted(registros.keys(), key=lambda x: int(x))
+        return ctes[:10]
+
+    def top_valores(registros, campo):
+        ctes = sorted(registros.keys(), key=lambda x: int(x))[:10]
+        return [registros[c][campo] for c in ctes]
 
     return {
-        "ATUA - Top 10": top(registros_a),
-        "GW - Top 10": top(registros_b),
+        "ATUA - Formato detectado": LAST_PARSE_INFO["atual"]["formato"],
+        "ATUA - Quantidade CTEs": len(registros_a),
+        "ATUA - Primeiros 10 CTEs": top_chaves(registros_a),
+        "ATUA - Primeiros 10 Empresa A": top_valores(registros_a, "empresa"),
+        "ATUA - Primeiros 10 Motorista A": top_valores(registros_a, "motorista"),
+        "GW - Formato detectado": LAST_PARSE_INFO["gw"]["formato"],
+        "GW - Quantidade CTEs": len(registros_b),
+        "GW - Primeiros 10 CTEs": top_chaves(registros_b),
+        "GW - Primeiros 10 Empresa B": top_valores(registros_b, "empresa"),
+        "GW - Primeiros 10 Motorista B": top_valores(registros_b, "motorista"),
     }
 
 
