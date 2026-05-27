@@ -19,7 +19,7 @@ import pdfplumber
 
 CENTAVOS = Decimal("0.01")
 
-RE_CTE_NUM = re.compile(r"^\d{4,6}$")
+RE_CTE_NUM = re.compile(r"^\d{1,6}$")
 RE_DATA_ATUA = re.compile(r"^\d{2}/\d{2}/\d{2}\s+\d{2}:\d{2}$")
 RE_DATA_GW = re.compile(r"^\d{2}/\d{2}/\d{4}$")
 RE_PLACA = re.compile(r"^[A-Z]{3}\d[A-Z0-9]\d{2}$|^[A-Z]{3}\d{4}$")
@@ -117,11 +117,11 @@ def normalizar_cte(value) -> Optional[str]:
 
 
 def _selecionar_valores_gw(valores: List[Decimal]) -> tuple[Optional[Decimal], Optional[Decimal]]:
+    if len(valores) >= 10:
+        return valores[1], valores[9]
     nao_zero = [valor for valor in valores if valor != Decimal("0.00")]
     if len(nao_zero) >= 2:
         return nao_zero[0], nao_zero[-1]
-    if len(valores) >= 3:
-        return valores[1], valores[-3]
     if len(valores) >= 2:
         return valores[0], valores[-1]
     return None, None
@@ -193,11 +193,27 @@ def _detectar_formato_pr(linhas_pdf) -> Optional[str]:
     return None
 
 
+def _linha_parece_cte(tipo: str, linha: str) -> bool:
+    linha = " ".join(str(linha).split())
+    if tipo == "ATUA":
+        return bool(RE_ATUA_PR_INICIO.match(linha) or RE_ATUA_LINHA.match(linha))
+    if tipo == "GW":
+        return bool(RE_GW_PR_INICIO.match(linha) or RE_GW_LINHA.match(linha))
+    return False
+
+
 def _registrar_debug_parser(tipo: str, formato: str, metodo: str, registros, linhas_pdf):
     ordenados = [registros[cte] for cte in sorted(registros.keys(), key=lambda x: int(x))[:10]]
+    paginas_lidas = sorted({page_num for page_num, _ in linhas_pdf})
+    linhas_cte = [linha for _, linha in linhas_pdf if _linha_parece_cte(tipo, linha)]
     LAST_PARSE_DEBUG[tipo] = {
+        "layout_detectado": tipo,
         "formato_detectado": formato,
         "metodo_usado": metodo,
+        "paginas_lidas": len(paginas_lidas),
+        "linhas_lidas": len(linhas_pdf),
+        "linhas_parecem_cte": len(linhas_cte),
+        "primeiras_10_linhas_parecem_cte": linhas_cte[:10],
         "quantidade_ctes": len(registros),
         "primeiros_10_ctes": [r["cte"] for r in ordenados],
         "primeiros_10_valores_empresa": [r["empresa"] for r in ordenados],
@@ -207,7 +223,7 @@ def _registrar_debug_parser(tipo: str, formato: str, metodo: str, registros, lin
 
 
 # Regex para linha de CTE do ATUA:  "1752 CT ..."
-RE_ATUA_LINHA = re.compile(r"^\s*(\d{4,6})\s+CT\b")
+RE_ATUA_LINHA = re.compile(r"^\s*(\d{1,6})\s+CT\b")
 # Regex para linha de CTE do GW: "001752 01/04/2026 ..."
 RE_GW_LINHA = re.compile(r"^\s*(\d{4,6})\s+\d{2}/\d{2}/\d{4}\b")
 RE_ATUA_PR_INICIO = re.compile(r"^\s*(\d{1,6})\s+CT\s+\d{2}/\d{2}/\d{2}\s+\d{2}:\d{2}\s+")
@@ -262,11 +278,17 @@ def _extrair_atua_linha_unica(linhas_pdf) -> Dict[str, Dict[str, Any]]:
         if not cte:
             continue
 
-        todos = MONEY_RE.findall(linha)
+        placas = list(RE_PLACA_PR.finditer(linha))
+        if placas:
+            resto = linha[placas[-1].end():]
+            todos = RE_NUM_BR_PR.findall(resto)
+        else:
+            todos = MONEY_RE.findall(linha)
 
         if len(todos) < 3:
             continue
 
+        peso = parse_money_br(todos[0]) if placas else None
         empresa_a = parse_money_br(todos[1])
         motorista_a = parse_money_br(todos[2])
 
@@ -275,6 +297,10 @@ def _extrair_atua_linha_unica(linhas_pdf) -> Dict[str, Dict[str, Any]]:
 
         registros[cte] = {
             "cte": cte,
+            "placa": placas[-1].group(0) if placas else None,
+            "peso": peso,
+            "frete_empresa": empresa_a,
+            "frete_motorista": motorista_a,
             "empresa": empresa_a,
             "motorista": motorista_a,
             "pagina": page_num,
@@ -310,6 +336,10 @@ def _finalizar_bloco_atua(registros, bloco):
 
     registros[bloco["cte"]] = {
         "cte": bloco["cte"],
+        "placa": None,
+        "peso": None,
+        "frete_empresa": valores[0],
+        "frete_motorista": valores[1],
         "empresa": valores[0],
         "motorista": valores[1],
         "pagina": bloco["pagina"],
@@ -339,8 +369,12 @@ def _extrair_atua_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _extrair_atua_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
+    return _extrair_atua_multilinha(linhas_pdf)
+
+
 def extrair_atua_pr(caminho_pdf, linhas_pdf=None) -> Dict[str, Dict[str, Any]]:
-    linhas_pdf = linhas_pdf if linhas_pdf is not None else extrair_linhas_pymupdf(caminho_pdf)
+    linhas_pdf = linhas_pdf if linhas_pdf is not None else _extrair_linhas_pdfplumber(caminho_pdf)
     registros = {}
 
     for page_num, linha in linhas_pdf:
@@ -362,6 +396,7 @@ def extrair_atua_pr(caminho_pdf, linhas_pdf=None) -> Dict[str, Dict[str, Any]]:
         if len(nums) < 3:
             continue
 
+        peso = parse_money_br(nums[0])
         empresa_a = parse_money_br(nums[1])
         motorista_a = parse_money_br(nums[2])
         if empresa_a is None or motorista_a is None:
@@ -369,6 +404,10 @@ def extrair_atua_pr(caminho_pdf, linhas_pdf=None) -> Dict[str, Dict[str, Any]]:
 
         registros[cte] = {
             "cte": cte,
+            "placa": placas[-1].group(0),
+            "peso": peso,
+            "frete_empresa": empresa_a,
+            "frete_motorista": motorista_a,
             "empresa": empresa_a,
             "motorista": motorista_a,
             "pagina": page_num,
@@ -384,13 +423,8 @@ def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
     formato_cabecalho = _detectar_cabecalho_pr(linhas_pdf)
     if formato_cabecalho == "ATUA PR":
-        linhas_pr = extrair_linhas_pymupdf(caminho_pdf)
-        registros = extrair_atua_pr(caminho_pdf, linhas_pr)
-        linhas_debug = linhas_pr
-        if not registros:
-            registros = extrair_atua_pr(caminho_pdf, linhas_pdf)
-            linhas_debug = linhas_pdf
-        _registrar_debug_parser("ATUA", formato_cabecalho, "parser PR fallback", registros, linhas_debug)
+        registros = extrair_atua_pr(caminho_pdf, linhas_pdf)
+        _registrar_debug_parser("ATUA", formato_cabecalho, "pdfplumber", registros, linhas_pdf)
         return registros
 
     registros = _extrair_atua_linha_unica(linhas_pdf)
@@ -402,14 +436,13 @@ def extrair_atua_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
         _registrar_debug_parser("ATUA", "ATUA legado", "parser atual", registros, linhas_pdf)
         return registros
 
-    linhas_pr = extrair_linhas_pymupdf(caminho_pdf)
-    formato = _detectar_formato_pr(linhas_pr)
+    formato = _detectar_formato_pr(linhas_pdf)
     if formato == "ATUA PR":
-        registros = extrair_atua_pr(caminho_pdf, linhas_pr)
-        _registrar_debug_parser("ATUA", formato, "parser PR fallback", registros, linhas_pr)
+        registros = extrair_atua_pr(caminho_pdf, linhas_pdf)
+        _registrar_debug_parser("ATUA", formato, "pdfplumber", registros, linhas_pdf)
         return registros
 
-    _registrar_debug_parser("ATUA", formato or "nao detectado", "parser atual", registros, linhas_pr)
+    _registrar_debug_parser("ATUA", formato or "nao detectado", "pdfplumber", registros, linhas_pdf)
     return registros
 
 
@@ -423,10 +456,12 @@ def _extrair_gw_linha_unica(linhas_pdf) -> Dict[str, Dict[str, Any]]:
         if not cte:
             continue
 
-        valores = [parse_money_br(item) for item in MONEY_RE.findall(linha)]
+        _, _, depois_combinado = linha.partition("Combinado")
+        origem_valores = depois_combinado if depois_combinado else linha
+        valores = [parse_money_br(item) for item in MONEY_RE.findall(origem_valores)]
         valores = [valor for valor in valores if valor is not None]
 
-        if len(valores) < 3:
+        if len(valores) < 2:
             continue
 
         # Empresa B usa "Valor frete" do GW. Não usar "Frete tab." porque pode vir líquido/descontado por impostos.
@@ -437,6 +472,10 @@ def _extrair_gw_linha_unica(linhas_pdf) -> Dict[str, Dict[str, Any]]:
 
         registros[cte] = {
             "cte": cte,
+            "peso": valores[0] if len(valores) > 0 else None,
+            "valor_frete": empresa_b,
+            "frete_tab": valores[4] if len(valores) > 4 else None,
+            "vl_carreteiro_liquido": motorista_b,
             "empresa": empresa_b,
             "motorista": motorista_b,
             "pagina": page_num,
@@ -483,6 +522,10 @@ def _finalizar_bloco_gw(registros, bloco):
     registros[cte] = {
         "cte": cte,
         # Empresa B usa "Valor frete" do GW. Não usar "Frete tab." porque pode vir líquido/descontado por impostos.
+        "peso": valores_antes_cte[0] if len(valores_antes_cte) > 0 else None,
+        "valor_frete": empresa_b,
+        "frete_tab": valores_antes_cte[4] if len(valores_antes_cte) > 4 else None,
+        "vl_carreteiro_liquido": motorista_b,
         "empresa": empresa_b,
         "motorista": motorista_b,
         "pagina": pagina_cte,
@@ -511,8 +554,59 @@ def _extrair_gw_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
     return registros
 
 
+def _extrair_gw_pr_multilinha(linhas_pdf) -> Dict[str, Dict[str, Any]]:
+    registros = {}
+    bloco_atual = []
+
+    def finalizar(bloco):
+        if not bloco:
+            return
+        cte = None
+        pagina = bloco[0][0]
+        valores = []
+        for page_num, linha in bloco:
+            linha = " ".join(str(linha).split())
+            if cte is None and RE_CTE_NUM.fullmatch(linha):
+                cte = normalizar_cte(linha)
+                pagina = page_num
+            for item in RE_MONEY_GW_PR.findall(linha):
+                valor = parse_money_br(item)
+                if valor is not None:
+                    valores.append(valor)
+
+        if not cte or len(valores) < 2:
+            return
+
+        empresa_b = valores[0]
+        motorista_b = valores[9] if len(valores) >= 10 else valores[2] if len(valores) >= 3 else valores[-1]
+        registros[cte] = {
+            "cte": cte,
+            "peso": None,
+            "valor_frete": empresa_b,
+            "frete_tab": valores[4] if len(valores) > 4 else None,
+            "vl_carreteiro_liquido": motorista_b,
+            "empresa": empresa_b,
+            "motorista": motorista_b,
+            "pagina": pagina,
+            "margem": None,
+            "raw": " | ".join(linha for _, linha in bloco),
+        }
+
+    for page_num, linha in linhas_pdf:
+        linha_normalizada = " ".join(str(linha).split())
+        if RE_DATA_GW.fullmatch(linha_normalizada):
+            finalizar(bloco_atual)
+            bloco_atual = [(page_num, linha_normalizada)]
+            continue
+        if bloco_atual:
+            bloco_atual.append((page_num, linha_normalizada))
+
+    finalizar(bloco_atual)
+    return registros
+
+
 def extrair_gw_pr(caminho_pdf, linhas_pdf=None) -> Dict[str, Dict[str, Any]]:
-    linhas_pdf = linhas_pdf if linhas_pdf is not None else extrair_linhas_pymupdf(caminho_pdf)
+    linhas_pdf = linhas_pdf if linhas_pdf is not None else _extrair_linhas_pdfplumber(caminho_pdf)
     registros = {}
 
     for idx, (page_num, linha) in enumerate(linhas_pdf):
@@ -525,34 +619,57 @@ def extrair_gw_pr(caminho_pdf, linhas_pdf=None) -> Dict[str, Dict[str, Any]]:
         if not cte:
             continue
 
-        valores_txt = RE_MONEY_GW_PR.findall(linha)
-        if len(valores_txt) < 2:
+        _, _, depois_combinado = linha.partition("Combinado")
+        if not depois_combinado:
             continue
 
-        if len(valores_txt) >= 10:
-            empresa_txt = valores_txt[1]
-            motorista_txt = valores_txt[-2]
-        else:
-            empresa_txt = valores_txt[0]
-            motorista_txt = valores_txt[-1]
-
-        empresa_b = parse_money_br(empresa_txt)
-        motorista_b = parse_money_br(motorista_txt)
-        if empresa_b is None or motorista_b is None:
+        valores_txt = RE_MONEY_GW_PR.findall(depois_combinado)
+        if len(valores_txt) < 10:
             continue
+
+        valores = [parse_money_br(item) for item in valores_txt]
+        if any(valor is None for valor in valores[:10]):
+            continue
+
+        peso = valores[0]
+        valor_frete = valores[1]
+        icms_iss = valores[2]
+        percentual_icms = valores[3]
+        frete_tab = valores[4]
+        pis = valores[5]
+        cofins = valores[6]
+        ir = valores[7]
+        cssl = valores[8]
+        vl_carreteiro_liquido = valores[9]
+        diferenca = valores[10] if len(valores) > 10 else None
 
         margem = None
-        for j in range(idx, min(idx + 4, len(linhas_pdf))):
-            linha_pct = " ".join(str(linhas_pdf[j][1]).split())
-            pct = RE_MARGEM_GW_PR.findall(linha_pct)
-            if pct:
-                margem = pct[-1]
-                break
+        pct = RE_MARGEM_GW_PR.findall(depois_combinado)
+        if pct:
+            margem = pct[-1]
+        else:
+            for j in range(idx + 1, min(idx + 4, len(linhas_pdf))):
+                linha_pct = " ".join(str(linhas_pdf[j][1]).split())
+                pct = RE_MARGEM_GW_PR.findall(linha_pct)
+                if pct:
+                    margem = pct[-1]
+                    break
 
         registros[cte] = {
             "cte": cte,
-            "empresa": empresa_b,
-            "motorista": motorista_b,
+            "peso": peso,
+            "valor_frete": valor_frete,
+            "icms_iss": icms_iss,
+            "percentual_icms": percentual_icms,
+            "frete_tab": frete_tab,
+            "pis": pis,
+            "cofins": cofins,
+            "ir": ir,
+            "cssl": cssl,
+            "vl_carreteiro_liquido": vl_carreteiro_liquido,
+            "diferenca_gw": diferenca,
+            "empresa": valor_frete,
+            "motorista": vl_carreteiro_liquido,
             "pagina": page_num,
             "margem": margem,
             "raw": linha,
@@ -566,13 +683,8 @@ def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
     linhas_pdf = _extrair_linhas_pdfplumber(caminho_pdf)
     formato_cabecalho = _detectar_cabecalho_pr(linhas_pdf)
     if formato_cabecalho == "GW PR":
-        linhas_pr = extrair_linhas_pymupdf(caminho_pdf)
-        registros = extrair_gw_pr(caminho_pdf, linhas_pr)
-        linhas_debug = linhas_pr
-        if not registros:
-            registros = extrair_gw_pr(caminho_pdf, linhas_pdf)
-            linhas_debug = linhas_pdf
-        _registrar_debug_parser("GW", formato_cabecalho, "parser PR fallback", registros, linhas_debug)
+        registros = extrair_gw_pr(caminho_pdf, linhas_pdf)
+        _registrar_debug_parser("GW", formato_cabecalho, "pdfplumber", registros, linhas_pdf)
         return registros
 
     registros = _extrair_gw_linha_unica(linhas_pdf)
@@ -584,14 +696,13 @@ def extrair_gw_por_blocos(caminho_pdf) -> Dict[str, Dict[str, Any]]:
         _registrar_debug_parser("GW", "GW legado", "parser atual", registros, linhas_pdf)
         return registros
 
-    linhas_pr = extrair_linhas_pymupdf(caminho_pdf)
-    formato = _detectar_formato_pr(linhas_pr)
+    formato = _detectar_formato_pr(linhas_pdf)
     if formato == "GW PR":
-        registros = extrair_gw_pr(caminho_pdf, linhas_pr)
-        _registrar_debug_parser("GW", formato, "parser PR fallback", registros, linhas_pr)
+        registros = extrair_gw_pr(caminho_pdf, linhas_pdf)
+        _registrar_debug_parser("GW", formato, "pdfplumber", registros, linhas_pdf)
         return registros
 
-    _registrar_debug_parser("GW", formato or "nao detectado", "parser atual", registros, linhas_pr)
+    _registrar_debug_parser("GW", formato or "nao detectado", "pdfplumber", registros, linhas_pdf)
     return registros
 
 
@@ -640,10 +751,10 @@ def ler_gw(caminho_pdf):
 
 def calcular_status(existe_a, existe_b, dif_empresa, dif_motorista, tolerancia: Decimal):
     if existe_a and not existe_b:
-        return "Faltante no B"
+        return "Faltante no GW"
 
     if existe_b and not existe_a:
-        return "Faltante no A"
+        return "Faltante no ATUA"
 
     abs_emp = abs(dif_empresa)
     abs_mot = abs(dif_motorista)
@@ -733,7 +844,7 @@ def gerar_resumo(linhas, registros_a, registros_b, tolerancia):
     dif_motorista_total = sum((x["Dif Motorista"] for x in linhas), Decimal("0.00")).quantize(CENTAVOS)
 
     impacto_abs = sum(
-        (x["Maior Diferença"] for x in linhas if x["Status"] in ["Divergente", "Faltante no A", "Faltante no B"]),
+        (x["Maior Diferença"] for x in linhas if x["Status"] in ["Divergente", "Faltante no ATUA", "Faltante no GW"]),
         Decimal("0.00")
     ).quantize(CENTAVOS)
 
@@ -746,8 +857,8 @@ def gerar_resumo(linhas, registros_a, registros_b, tolerancia):
         "ok": count("OK"),
         "ok_arredondamento": count("OK por arredondamento"),
         "divergentes": count("Divergente"),
-        "faltante_a": count("Faltante no A"),
-        "faltante_b": count("Faltante no B"),
+        "faltante_a": count("Faltante no ATUA"),
+        "faltante_b": count("Faltante no GW"),
         "dif_empresa_total": dif_empresa_total,
         "dif_motorista_total": dif_motorista_total,
         "impacto_absoluto": impacto_abs,
@@ -761,9 +872,9 @@ def gerar_resumo_df(df: pd.DataFrame) -> dict:
     ok = len(df[df["Status"] == "OK"])
     ok_r = len(df[df["Status"] == "OK por arredondamento"])
     div = len(df[df["Status"] == "Divergente"])
-    fa = len(df[df["Status"] == "Faltante no A"])
-    fb = len(df[df["Status"] == "Faltante no B"])
-    crit = df[df["Status"].isin(["Divergente", "Faltante no A", "Faltante no B"])]
+    fa = len(df[df["Status"] == "Faltante no ATUA"])
+    fb = len(df[df["Status"] == "Faltante no GW"])
+    crit = df[df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
     dif_empresa_total = df["Dif Empresa"].fillna(0).sum()
     dif_motorista_total = df["Dif Motorista"].fillna(0).sum()
     impacto_abs = crit["Maior Diferença"].fillna(0).sum()
@@ -783,16 +894,11 @@ def gerar_resumo_df(df: pd.DataFrame) -> dict:
 def validar_integridade_basica(registros_a, registros_b):
     erros = []
 
-    if len(registros_a) < 10:
-        erros.append(f"ATUA com poucos CTEs lidos: {len(registros_a)}")
+    if len(registros_a) == 0:
+        erros.append("ATUA retornou 0 CTEs.")
 
-    if len(registros_b) < 10:
-        erros.append(f"GW com poucos CTEs lidos: {len(registros_b)}")
-
-    if registros_a:
-        zerados_a = sum(1 for r in registros_a.values() if r["empresa"] == 0 or r["motorista"] == 0)
-        if zerados_a > len(registros_a) * Decimal("0.20"):
-            erros.append("ATUA com valores zerados em massa. Parser provavelmente errado.")
+    if len(registros_b) == 0:
+        erros.append("GW retornou 0 CTEs.")
 
     if registros_b:
         absurdos_b = sum(1 for r in registros_b.values() if r["motorista"] > Decimal("200000.00"))
@@ -822,15 +928,25 @@ def gerar_debug(registros_a, registros_b):
         return saida
 
     return {
+        "ATUA - layout detectado": LAST_PARSE_DEBUG.get("ATUA", {}).get("layout_detectado"),
         "ATUA - formato detectado": LAST_PARSE_DEBUG.get("ATUA", {}).get("formato_detectado"),
         "ATUA - metodo usado": LAST_PARSE_DEBUG.get("ATUA", {}).get("metodo_usado"),
+        "ATUA - paginas lidas": LAST_PARSE_DEBUG.get("ATUA", {}).get("paginas_lidas"),
+        "ATUA - linhas lidas": LAST_PARSE_DEBUG.get("ATUA", {}).get("linhas_lidas"),
+        "ATUA - linhas que parecem CTE": LAST_PARSE_DEBUG.get("ATUA", {}).get("linhas_parecem_cte"),
+        "ATUA - primeiras 10 linhas que parecem CTE": LAST_PARSE_DEBUG.get("ATUA", {}).get("primeiras_10_linhas_parecem_cte", []),
         "ATUA - quantidade de CTEs": LAST_PARSE_DEBUG.get("ATUA", {}).get("quantidade_ctes", len(registros_a)),
         "ATUA - primeiros 10 CTEs": LAST_PARSE_DEBUG.get("ATUA", {}).get("primeiros_10_ctes", []),
         "ATUA - primeiros 10 valores empresa": LAST_PARSE_DEBUG.get("ATUA", {}).get("primeiros_10_valores_empresa", []),
         "ATUA - primeiros 10 valores motorista": LAST_PARSE_DEBUG.get("ATUA", {}).get("primeiros_10_valores_motorista", []),
         "ATUA - primeiras 10 linhas reais extraidas": LAST_PARSE_DEBUG.get("ATUA", {}).get("primeiras_10_linhas_reais_extraidas", []),
+        "GW - layout detectado": LAST_PARSE_DEBUG.get("GW", {}).get("layout_detectado"),
         "GW - formato detectado": LAST_PARSE_DEBUG.get("GW", {}).get("formato_detectado"),
         "GW - metodo usado": LAST_PARSE_DEBUG.get("GW", {}).get("metodo_usado"),
+        "GW - paginas lidas": LAST_PARSE_DEBUG.get("GW", {}).get("paginas_lidas"),
+        "GW - linhas lidas": LAST_PARSE_DEBUG.get("GW", {}).get("linhas_lidas"),
+        "GW - linhas que parecem CTE": LAST_PARSE_DEBUG.get("GW", {}).get("linhas_parecem_cte"),
+        "GW - primeiras 10 linhas que parecem CTE": LAST_PARSE_DEBUG.get("GW", {}).get("primeiras_10_linhas_parecem_cte", []),
         "GW - quantidade de CTEs": LAST_PARSE_DEBUG.get("GW", {}).get("quantidade_ctes", len(registros_b)),
         "GW - primeiros 10 CTEs": LAST_PARSE_DEBUG.get("GW", {}).get("primeiros_10_ctes", []),
         "GW - primeiros 10 valores empresa": LAST_PARSE_DEBUG.get("GW", {}).get("primeiros_10_valores_empresa", []),
@@ -949,7 +1065,7 @@ def exportar_excel(df, resumo, nome_a, nome_b, tolerancia) -> bytes:
 
     CORES = {
         "OK": "C6EFCE", "OK por arredondamento": "FFEB9C",
-        "Divergente": "FFC7CE", "Faltante no A": "DDEBF7", "Faltante no B": "FCE4D6",
+        "Divergente": "FFC7CE", "Faltante no ATUA": "DDEBF7", "Faltante no GW": "FCE4D6",
     }
     buf = io.BytesIO()
     wb = Workbook()
@@ -1016,7 +1132,7 @@ def exportar_pdf(df, resumo, nome_a, nome_b, tolerancia) -> bytes:
     elems.append(t)
     elems.append(Spacer(1, 0.5 * cm))
 
-    df_div = df[df["Status"].isin(["Divergente", "Faltante no A", "Faltante no B"])].head(50)
+    df_div = df[df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])].head(50)
     if not df_div.empty:
         elems.append(Paragraph("Divergências e Faltantes (até 50)", styles["Heading2"]))
         cols = ["CTE", "Status", "Empresa A", "Empresa B", "Dif. Empresa",

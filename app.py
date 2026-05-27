@@ -26,8 +26,8 @@ BRAND_PLATFORM = "Plataforma de Inteligência Logística"
 STATUS_DISPLAY_MAP = {"OK por arredondamento": "OK Arred."}
 STATUS_ORDER_MAP = {
     "Divergente": 0,
-    "Faltante no A": 1,
-    "Faltante no B": 2,
+    "Faltante no ATUA": 1,
+    "Faltante no GW": 2,
     "OK por arredondamento": 3,
     "OK": 4,
 }
@@ -37,8 +37,8 @@ CONFERENCE_FILTER_LABELS = [
     "Divergentes reais",
     "Diferenças dentro da tolerância",
     "Faltantes",
-    "Faltantes no A",
-    "Faltantes no B",
+    "Faltantes no ATUA",
+    "Faltantes no GW",
     "OK sem diferença",
 ]
 VISUAL_DIFF_FILTERS = {
@@ -2705,9 +2705,9 @@ def build_observacao(status_base, dif_empresa=None, dif_motorista=None, toleranc
         return "Sem diferença"
     if status_base == "OK por arredondamento":
         return "Diferença dentro da tolerância"
-    if status_base == "Faltante no A":
+    if status_base == "Faltante no ATUA":
         return "Existe no GW e não existe no ATUA"
-    if status_base == "Faltante no B":
+    if status_base == "Faltante no GW":
         return "Existe no ATUA e não existe no GW"
 
     empresa_bucket = classify_diff_bucket(dif_empresa, tolerancia)
@@ -2915,7 +2915,7 @@ def prepare_conference_dataframe(df, tolerancia=0.50):
     prepared["_Empresa Visual"] = prepared["_Dif Empresa Num"].map(lambda value: classify_diff_bucket(value, tolerancia_valor))
     prepared["_Motorista Visual"] = prepared["_Dif Motorista Num"].map(lambda value: classify_diff_bucket(value, tolerancia_valor))
     prepared["_Linha Visual"] = prepared["_Status Base"].map(
-        lambda status: "missing" if status in ["Faltante no A", "Faltante no B"] else "normal"
+        lambda status: "missing" if status in ["Faltante no ATUA", "Faltante no GW"] else "normal"
     )
     prepared["Observação"] = prepared.apply(
         lambda row: build_observacao(
@@ -2937,17 +2937,17 @@ def apply_conference_filters(prepared, scope_label, min_diff, search_text, order
         visible = visible[visible["CTE"].astype(str).str.contains(search_text.strip(), case=False, na=False)]
 
     if scope_label == "Críticos":
-        visible = visible[visible["_Status Base"].isin(["Divergente", "Faltante no A", "Faltante no B"])]
+        visible = visible[visible["_Status Base"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
     elif scope_label == "Divergentes reais":
         visible = visible[visible["_Status Base"] == "Divergente"]
     elif scope_label == "Diferenças dentro da tolerância":
         visible = visible[visible["_Status Base"] == "OK por arredondamento"]
     elif scope_label == "Faltantes":
-        visible = visible[visible["_Status Base"].isin(["Faltante no A", "Faltante no B"])]
-    elif scope_label == "Faltantes no A":
-        visible = visible[visible["_Status Base"] == "Faltante no A"]
-    elif scope_label == "Faltantes no B":
-        visible = visible[visible["_Status Base"] == "Faltante no B"]
+        visible = visible[visible["_Status Base"].isin(["Faltante no ATUA", "Faltante no GW"])]
+    elif scope_label == "Faltantes no ATUA":
+        visible = visible[visible["_Status Base"] == "Faltante no ATUA"]
+    elif scope_label == "Faltantes no GW":
+        visible = visible[visible["_Status Base"] == "Faltante no GW"]
     elif scope_label == "OK sem diferença":
         visible = visible[visible["_Status Base"] == "OK"]
 
@@ -3008,8 +3008,8 @@ def build_detailed_counts_html(resumo):
         '<div class="detail-grid">'
         f'<div class="detail-metric"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b></div>'
         f'<div class="detail-metric"><small>OK por arredondamento</small><b>{safe_text(resumo["ok_arredondamento"])}</b></div>'
-        f'<div class="detail-metric"><small>Faltante no A</small><b>{safe_text(resumo["faltantes_a"])}</b></div>'
-        f'<div class="detail-metric"><small>Faltante no B</small><b>{safe_text(resumo["faltantes_b"])}</b></div>'
+        f'<div class="detail-metric"><small>Faltante no ATUA</small><b>{safe_text(resumo["faltantes_a"])}</b></div>'
+        f'<div class="detail-metric"><small>Faltante no GW</small><b>{safe_text(resumo["faltantes_b"])}</b></div>'
         '</div>'
         '<div class="conference-note">Diferenças dentro da tolerância são exibidas para conferência, mas não compõem o impacto crítico.</div>'
     )
@@ -3018,7 +3018,7 @@ def build_detailed_counts_html(resumo):
 @st.cache_data(show_spinner=False)
 def build_export_summary_rows(df, resumo, tolerancia=0.50):
     prepared = prepare_conference_dataframe(df, tolerancia)
-    criticos = prepared[prepared["_Status Base"].isin(["Divergente", "Faltante no A", "Faltante no B"])].copy()
+    criticos = prepared[prepared["_Status Base"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])].copy()
     dif_empresa_critica = float(round(pd.to_numeric(criticos.get("Dif. Empresa"), errors="coerce").fillna(0.0).sum(), 2)) if "Dif. Empresa" in criticos.columns else 0.0
     dif_motorista_critica = float(round(pd.to_numeric(criticos.get("Dif. Motorista"), errors="coerce").fillna(0.0).sum(), 2)) if "Dif. Motorista" in criticos.columns else 0.0
     return [
@@ -3026,8 +3026,8 @@ def build_export_summary_rows(df, resumo, tolerancia=0.50):
         ["OK", str(resumo["ok"])],
         ["OK por arredondamento", str(resumo["ok_arredondamento"])],
         ["Divergentes reais", str(resumo["divergentes"])],
-        ["Faltantes no A", str(resumo["faltantes_a"])],
-        ["Faltantes no B", str(resumo["faltantes_b"])],
+        ["Faltantes no ATUA", str(resumo["faltantes_a"])],
+        ["Faltantes no GW", str(resumo["faltantes_b"])],
         ["Diferença Empresa — Crítico Total", br_money(dif_empresa_critica)],
         ["Diferença Motorista — Crítico Total", br_money(dif_motorista_critica)],
         ["Impacto Crítico Total", br_money(resumo["impacto_absoluto"])],
@@ -3050,8 +3050,8 @@ def build_export_frames(df, tolerancia=0.50):
     display_df, _ = build_conference_display_table(prepared)
     divergentes_df = display_df[display_df["Status"] == "Divergente"].copy()
     tolerancia_df = display_df[display_df["Status"] == "OK Arred."].copy()
-    faltantes_df = display_df[display_df["Status"].isin(["Faltante no A", "Faltante no B"])].copy()
-    criticos_df = display_df[display_df["Status"].isin(["Divergente", "Faltante no A", "Faltante no B"])].copy()
+    faltantes_df = display_df[display_df["Status"].isin(["Faltante no ATUA", "Faltante no GW"])].copy()
+    criticos_df = display_df[display_df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])].copy()
     return prepared, display_df, divergentes_df, tolerancia_df, faltantes_df, criticos_df
 
 
@@ -3084,8 +3084,8 @@ def build_excel_bytes(df, resumo, nome_a, nome_b, tolerancia):
         "OK": PatternFill(fill_type="solid", start_color="DCFCE7", end_color="DCFCE7"),
         "OK Arred.": PatternFill(fill_type="solid", start_color="DBEAFE", end_color="DBEAFE"),
         "Divergente": PatternFill(fill_type="solid", start_color="FEE2E2", end_color="FEE2E2"),
-        "Faltante no A": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
-        "Faltante no B": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
+        "Faltante no ATUA": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
+        "Faltante no GW": PatternFill(fill_type="solid", start_color="FEF3C7", end_color="FEF3C7"),
     }
     company_columns = {"Empresa A", "Empresa B", "Dif. Empresa"}
     driver_columns = {"Motorista A", "Motorista B", "Diferença"}
@@ -3504,11 +3504,20 @@ def build_file_debug(caminho):
     return {"caminho": str(arquivo), "existe": existe, "tamanho_bytes": tamanho}
 
 
-def build_debug_preview(registros):
+def build_debug_preview(registros, parser_debug=None):
     registros = registros or {}
+    parser_debug = parser_debug or {}
     top_ctes = sorted(registros.keys(), key=lambda x: int(x))[:10]
 
     return {
+        "layout_detectado": parser_debug.get("layout_detectado") or parser_debug.get("formato_detectado"),
+        "formato_detectado": parser_debug.get("formato_detectado"),
+        "metodo_usado": parser_debug.get("metodo_usado"),
+        "paginas_lidas": parser_debug.get("paginas_lidas"),
+        "linhas_lidas": parser_debug.get("linhas_lidas"),
+        "linhas_parecem_cte": parser_debug.get("linhas_parecem_cte"),
+        "primeiras_linhas_parecem_cte": parser_debug.get("primeiras_10_linhas_parecem_cte", []),
+        "primeiras_linhas_extraidas": parser_debug.get("primeiras_10_linhas_reais_extraidas", []),
         "quantidade_ctes": int(len(registros)),
         "ctes": top_ctes,
         "empresa": [format_money_br(registros[cte]["empresa"]) for cte in top_ctes],
@@ -3541,18 +3550,20 @@ def titulo_erro_processamento(mensagem):
 
 
 def set_audit_debug(registros_a=None, registros_b=None, warn_a=None, warn_b=None, caminho_a=None, caminho_b=None, timings=None):
+    parser_debug_a = auditoria_io.LAST_PARSE_DEBUG.get("ATUA", {}) if (registros_a is not None or warn_a) else {}
+    parser_debug_b = auditoria_io.LAST_PARSE_DEBUG.get("GW", {}) if (registros_b is not None or warn_b) else {}
     st.session_state.audit_debug = {
         "timings": {
             label: round(float(seconds), 3)
             for label, seconds in (timings or {}).items()
         },
         "ATUA": {
-            **build_debug_preview(registros_a),
+            **build_debug_preview(registros_a, parser_debug_a),
             "warnings": [ui(item) for item in (warn_a or [])],
             "arquivo": build_file_debug(caminho_a),
         },
         "GW": {
-            **build_debug_preview(registros_b),
+            **build_debug_preview(registros_b, parser_debug_b),
             "warnings": [ui(item) for item in (warn_b or [])],
             "arquivo": build_file_debug(caminho_b),
         },
@@ -3586,11 +3597,17 @@ def render_audit_debug():
                 st.write(f"Arquivo salvo: {arquivo.get('caminho') or '-'}")
                 st.write(f"Arquivo existe: {'Sim' if arquivo.get('existe') else 'Não'}")
                 st.write(f"Tamanho em bytes: {arquivo.get('tamanho_bytes', 0)}")
+                st.write(f"Layout detectado: {data.get('layout_detectado') or '-'}")
+                st.write(f"Metodo de leitura: {data.get('metodo_usado') or '-'}")
+                st.write(f"Paginas lidas: {data.get('paginas_lidas') if data.get('paginas_lidas') is not None else '-'}")
+                st.write(f"Linhas lidas: {data.get('linhas_lidas') if data.get('linhas_lidas') is not None else '-'}")
+                st.write(f"Linhas que parecem CTE: {data.get('linhas_parecem_cte') if data.get('linhas_parecem_cte') is not None else '-'}")
                 st.write(f"Quantidade de CTEs encontrados: {data.get('quantidade_ctes', 0)}")
                 st.write(f"Primeiros 10 CTEs: {data.get('ctes', [])}")
                 st.write(f"Primeiros 10 valores {emp_label}: {data.get('empresa', [])}")
                 st.write(f"Primeiros 10 valores {mot_label}: {data.get('motorista', [])}")
                 st.write(f"Primeiras páginas lidas: {data.get('paginas', [])}")
+                st.write(f"Primeiras 10 linhas CTE: {data.get('primeiras_linhas_parecem_cte', [])}")
                 for warning in data.get("warnings", []):
                     st.warning(warning)
 
@@ -3893,7 +3910,7 @@ def render_kpis(resumo, df):
     df_calc["MD"] = df_calc[["DE", "DM"]].abs().max(axis=1)
 
     div_df = df_calc[df_calc["Status"] == "Divergente"]
-    crit_df = df_calc[df_calc["Status"].isin(["Divergente", "Faltante no A", "Faltante no B"])]
+    crit_df = df_calc[df_calc["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
 
     de_div = div_df["DE"].sum()
     dm_div = div_df["DM"].sum()
@@ -3910,8 +3927,8 @@ def render_kpis(resumo, df):
         f'{kpi_html("OK Arred.", resumo["ok_arredondamento"], "blue")}'
         f'{kpi_html("Diferenças dentro da tolerância", resumo["ok_arredondamento"], "blue")}'
         f'{kpi_html("Divergentes reais", resumo["divergentes"], "red")}'
-        f'{kpi_html("Faltantes no A", resumo["faltantes_a"], "orange")}'
-        f'{kpi_html("Faltantes no B", resumo["faltantes_b"], "orange")}'
+        f'{kpi_html("Faltantes no ATUA", resumo["faltantes_a"], "orange")}'
+        f'{kpi_html("Faltantes no GW", resumo["faltantes_b"], "orange")}'
         f'{kpi_html("Impacto Crítico Total", br_money(resumo["impacto_absoluto"]), "red", True)}'
         '</div>'
         '<div class="breadcrumb" style="margin-top:24px;"><b>Leitura financeira complementar</b><span>Detalhes de apoio para análise executiva</span></div>'
@@ -3955,8 +3972,8 @@ def render_chart(df):
             "OK": "#22c55e",
             "OK Arred.": "#179cf4",
             "Divergente": "#ef4444",
-            "Faltante no A": "#ff9f1c",
-            "Faltante no B": "#ff9f1c",
+            "Faltante no ATUA": "#ff9f1c",
+            "Faltante no GW": "#ff9f1c",
         }
         fig = px.bar(
             counts,
@@ -3984,8 +4001,8 @@ def status_style(value):
         "OK": "background-color:#dcfce7;color:#166534;font-weight:800;border-radius:99px;",
         "OK Arred.": "background-color:#e8f3ff;color:#075985;font-weight:800;border-radius:99px;",
         "Divergente": "background-color:#fee2e2;color:#991b1b;font-weight:800;border-radius:99px;",
-        "Faltante no A": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
-        "Faltante no B": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
+        "Faltante no ATUA": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
+        "Faltante no GW": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
     }
     return styles.get(value, "")
 
@@ -3995,8 +4012,8 @@ def status_badge_html(value):
         "OK": "ok",
         "OK Arred.": "round",
         "Divergente": "div",
-        "Faltante no A": "miss",
-        "Faltante no B": "miss",
+        "Faltante no ATUA": "miss",
+        "Faltante no GW": "miss",
     }.get(value, "round")
     return f'<span class="table-badge {tone}">{safe_text(value)}</span>'
 
@@ -4050,8 +4067,8 @@ def render_table(df):
         resumo = {
             "divergentes": int((prepared["_Status Base"] == "Divergente").sum()),
             "ok_arredondamento": int((prepared["_Status Base"] == "OK por arredondamento").sum()),
-            "faltantes_a": int((prepared["_Status Base"] == "Faltante no A").sum()),
-            "faltantes_b": int((prepared["_Status Base"] == "Faltante no B").sum()),
+            "faltantes_a": int((prepared["_Status Base"] == "Faltante no ATUA").sum()),
+            "faltantes_b": int((prepared["_Status Base"] == "Faltante no GW").sum()),
         }
         st.markdown(build_detailed_counts_html(resumo), unsafe_allow_html=True)
 
@@ -4569,7 +4586,7 @@ def render_kpis(resumo, df):
         f'<div class="summary-card ok"><small>OK</small><b>{safe_text(resumo["ok"])}</b><span>Sem diferença identificada</span></div>'
         f'<div class="summary-card round"><small>OK Arred.</small><b>{safe_text(resumo["ok_arredondamento"])}</b><span>Diferenças dentro da tolerância</span></div>'
         f'<div class="summary-card div"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b><span>Acima da tolerância configurada</span></div>'
-        f'<div class="summary-card miss"><small>Faltantes</small><b>{safe_text(faltantes_total)}</b><span>No A: {safe_text(resumo["faltantes_a"])} • No B: {safe_text(resumo["faltantes_b"])}</span></div>'
+        f'<div class="summary-card miss"><small>Faltantes</small><b>{safe_text(faltantes_total)}</b><span>No ATUA: {safe_text(resumo["faltantes_a"])} • No GW: {safe_text(resumo["faltantes_b"])}</span></div>'
         f'<div class="summary-card impact"><small>Impacto crítico total</small><b>{safe_text(br_money(resumo["impacto_absoluto"]))}</b><span>Não inclui OK por arredondamento</span></div>'
         '</div>'
         '<div class="summary-note">Diferenças dentro da tolerância continuam visíveis para conferência na tabela, mas não compõem o impacto crítico.</div>'
@@ -4583,7 +4600,7 @@ def render_chart(df):
         .astype(str)
         .replace({"OK por arredondamento": "OK Arred."})
         .value_counts()
-        .reindex(["OK", "OK Arred.", "Divergente", "Faltante no A", "Faltante no B"], fill_value=0)
+        .reindex(["OK", "OK Arred.", "Divergente", "Faltante no ATUA", "Faltante no GW"], fill_value=0)
         .rename_axis("Status")
         .reset_index(name="Qtd")
     )
@@ -4595,8 +4612,8 @@ def render_chart(df):
         "OK": "#16A34A",
         "OK Arred.": "#2563EB",
         "Divergente": "#DC2626",
-        "Faltante no A": "#F97316",
-        "Faltante no B": "#FB923C",
+        "Faltante no ATUA": "#F97316",
+        "Faltante no GW": "#FB923C",
     }
     total = int(counts["Qtd"].sum())
     fig = px.pie(
