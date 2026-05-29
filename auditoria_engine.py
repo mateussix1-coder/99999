@@ -843,7 +843,11 @@ def gerar_resumo(linhas, registros_a, registros_b, tolerancia):
     dif_empresa_total = sum((x["Dif Empresa"] for x in linhas), Decimal("0.00")).quantize(CENTAVOS)
     dif_motorista_total = sum((x["Dif Motorista"] for x in linhas), Decimal("0.00")).quantize(CENTAVOS)
 
-    impacto_abs = sum(
+    impacto_confirmado = sum(
+        (x["Maior Diferença"] for x in linhas if x["Status"] in ["Divergente", "Faltante no GW"]),
+        Decimal("0.00")
+    ).quantize(CENTAVOS)
+    impacto_potencial_total = sum(
         (x["Maior Diferença"] for x in linhas if x["Status"] in ["Divergente", "Faltante no ATUA", "Faltante no GW"]),
         Decimal("0.00")
     ).quantize(CENTAVOS)
@@ -859,9 +863,12 @@ def gerar_resumo(linhas, registros_a, registros_b, tolerancia):
         "divergentes": count("Divergente"),
         "faltante_a": count("Faltante no ATUA"),
         "faltante_b": count("Faltante no GW"),
+        "volume_faltante_atua": count("Faltante no ATUA"),
         "dif_empresa_total": dif_empresa_total,
         "dif_motorista_total": dif_motorista_total,
-        "impacto_absoluto": impacto_abs,
+        "impacto_absoluto": impacto_confirmado,
+        "impacto_critico_confirmado": impacto_confirmado,
+        "impacto_potencial_total": impacto_potencial_total,
         "dif_total_empresa": dif_empresa_total,    # aliases for frontend
         "dif_total_motorista": dif_motorista_total # aliases for frontend
     }
@@ -874,10 +881,12 @@ def gerar_resumo_df(df: pd.DataFrame) -> dict:
     div = len(df[df["Status"] == "Divergente"])
     fa = len(df[df["Status"] == "Faltante no ATUA"])
     fb = len(df[df["Status"] == "Faltante no GW"])
-    crit = df[df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
+    crit = df[df["Status"].isin(["Divergente", "Faltante no GW"])]
+    potencial = df[df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
     dif_empresa_total = df["Dif Empresa"].fillna(0).sum()
     dif_motorista_total = df["Dif Motorista"].fillna(0).sum()
     impacto_abs = crit["Maior Diferença"].fillna(0).sum()
+    impacto_potencial_total = potencial["Maior Diferença"].fillna(0).sum()
 
     return {
         "total": int(total),
@@ -886,9 +895,12 @@ def gerar_resumo_df(df: pd.DataFrame) -> dict:
         "divergentes": int(div),
         "faltantes_a": int(fa),
         "faltantes_b": int(fb),
+        "volume_faltante_atua": int(fa),
         "dif_total_empresa": float(round(dif_empresa_total, 2)),
         "dif_total_motorista": float(round(dif_motorista_total, 2)),
         "impacto_absoluto": float(round(impacto_abs, 2)),
+        "impacto_critico_confirmado": float(round(impacto_abs, 2)),
+        "impacto_potencial_total": float(round(impacto_potencial_total, 2)),
     }
 
 def validar_integridade_basica(registros_a, registros_b):

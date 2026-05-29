@@ -40,6 +40,35 @@ class SampleParserTests(unittest.TestCase):
         self.assertTrue(resultado["linhas"])
         self.assertTrue(all(linha["Status"] == "OK por arredondamento" for linha in resultado["linhas"]))
 
+    def test_confirmed_impact_excludes_missing_atua(self):
+        linhas = [
+            {
+                "Status": "Divergente",
+                "Dif Empresa": Decimal("0.00"),
+                "Dif Motorista": Decimal("10.00"),
+                "Maior Diferença": Decimal("10.00"),
+            },
+            {
+                "Status": "Faltante no GW",
+                "Dif Empresa": Decimal("20.00"),
+                "Dif Motorista": Decimal("0.00"),
+                "Maior Diferença": Decimal("20.00"),
+            },
+            {
+                "Status": "Faltante no ATUA",
+                "Dif Empresa": Decimal("-100.00"),
+                "Dif Motorista": Decimal("-100.00"),
+                "Maior Diferença": Decimal("100.00"),
+            },
+        ]
+
+        resumo = ae.gerar_resumo(linhas, {"1": {}}, {"2": {}}, Decimal("0.50"))
+
+        self.assertEqual(resumo["impacto_critico_confirmado"], Decimal("30.00"))
+        self.assertEqual(resumo["impacto_absoluto"], Decimal("30.00"))
+        self.assertEqual(resumo["impacto_potencial_total"], Decimal("130.00"))
+        self.assertEqual(resumo["volume_faltante_atua"], 1)
+
     def test_atua_pr_multilinha_parser(self):
         linhas = [
             (1, "43"),

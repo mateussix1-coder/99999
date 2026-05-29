@@ -2513,23 +2513,6 @@ def icon_doc(size=20):
     """
 
 
-def icon_menu(size=22):
-    return f"""
-    <svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    </svg>
-    """
-
-
-def icon_search(size=18):
-    return f"""
-    <svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
-        <path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    </svg>
-    """
-
-
 def fretevision_mark(size=120):
     grad_suffix = f"{size}"
     return (
@@ -2657,16 +2640,26 @@ def salvar_upload_pdf(uploaded_file, prefixo):
 
 
 def normalizar_resumo_motor(resumo):
+    impacto_confirmado = (
+        resumo.get("impacto_critico_confirmado", resumo.get("impacto_absoluto", 0)) or 0
+    )
+    impacto_potencial = resumo.get("impacto_potencial_total", impacto_confirmado) or 0
+    faltante_atua = int(resumo.get("faltante_a", 0) or 0)
     return {
         "total": int(resumo.get("total_analisado", 0) or 0),
         "ok": int(resumo.get("ok", 0) or 0),
         "ok_arredondamento": int(resumo.get("ok_arredondamento", 0) or 0),
         "divergentes": int(resumo.get("divergentes", 0) or 0),
-        "faltantes_a": int(resumo.get("faltante_a", 0) or 0),
+        "faltantes_a": faltante_atua,
         "faltantes_b": int(resumo.get("faltante_b", 0) or 0),
+        "volume_faltante_atua": int(
+            resumo.get("volume_faltante_atua", faltante_atua) or 0
+        ),
         "dif_total_empresa": float(resumo.get("dif_total_empresa", 0) or 0),
         "dif_total_motorista": float(resumo.get("dif_total_motorista", 0) or 0),
-        "impacto_absoluto": float(resumo.get("impacto_absoluto", 0) or 0),
+        "impacto_absoluto": float(impacto_confirmado),
+        "impacto_critico_confirmado": float(impacto_confirmado),
+        "impacto_potencial_total": float(impacto_potencial),
     }
 
 
@@ -2937,7 +2930,7 @@ def apply_conference_filters(prepared, scope_label, min_diff, search_text, order
         visible = visible[visible["CTE"].astype(str).str.contains(search_text.strip(), case=False, na=False)]
 
     if scope_label == "Críticos":
-        visible = visible[visible["_Status Base"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
+        visible = visible[visible["_Status Base"].isin(["Divergente", "Faltante no GW"])]
     elif scope_label == "Divergentes reais":
         visible = visible[visible["_Status Base"] == "Divergente"]
     elif scope_label == "Diferenças dentro da tolerância":
@@ -3008,17 +3001,17 @@ def build_detailed_counts_html(resumo):
         '<div class="detail-grid">'
         f'<div class="detail-metric"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b></div>'
         f'<div class="detail-metric"><small>OK por arredondamento</small><b>{safe_text(resumo["ok_arredondamento"])}</b></div>'
-        f'<div class="detail-metric"><small>Faltante no ATUA</small><b>{safe_text(resumo["faltantes_a"])}</b></div>'
+        f'<div class="detail-metric"><small>Volume faltante no ATUA</small><b>{safe_text(resumo["volume_faltante_atua"])}</b></div>'
         f'<div class="detail-metric"><small>Faltante no GW</small><b>{safe_text(resumo["faltantes_b"])}</b></div>'
         '</div>'
-        '<div class="conference-note">Diferenças dentro da tolerância são exibidas para conferência, mas não compõem o impacto crítico.</div>'
+        '<div class="conference-note">Diferenças dentro da tolerância e faltantes no ATUA são exibidos para conferência, mas não compõem o impacto crítico confirmado.</div>'
     )
 
 
 @st.cache_data(show_spinner=False)
 def build_export_summary_rows(df, resumo, tolerancia=0.50):
     prepared = prepare_conference_dataframe(df, tolerancia)
-    criticos = prepared[prepared["_Status Base"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])].copy()
+    criticos = prepared[prepared["_Status Base"].isin(["Divergente", "Faltante no GW"])].copy()
     dif_empresa_critica = float(round(pd.to_numeric(criticos.get("Dif. Empresa"), errors="coerce").fillna(0.0).sum(), 2)) if "Dif. Empresa" in criticos.columns else 0.0
     dif_motorista_critica = float(round(pd.to_numeric(criticos.get("Dif. Motorista"), errors="coerce").fillna(0.0).sum(), 2)) if "Dif. Motorista" in criticos.columns else 0.0
     return [
@@ -3026,11 +3019,11 @@ def build_export_summary_rows(df, resumo, tolerancia=0.50):
         ["OK", str(resumo["ok"])],
         ["OK por arredondamento", str(resumo["ok_arredondamento"])],
         ["Divergentes reais", str(resumo["divergentes"])],
-        ["Faltantes no ATUA", str(resumo["faltantes_a"])],
+        ["Volume faltante no ATUA", str(resumo["volume_faltante_atua"])],
         ["Faltantes no GW", str(resumo["faltantes_b"])],
-        ["Diferença Empresa — Crítico Total", br_money(dif_empresa_critica)],
-        ["Diferença Motorista — Crítico Total", br_money(dif_motorista_critica)],
-        ["Impacto Crítico Total", br_money(resumo["impacto_absoluto"])],
+        ["Diferença Empresa - Crítico Confirmado", br_money(dif_empresa_critica)],
+        ["Diferença Motorista - Crítico Confirmado", br_money(dif_motorista_critica)],
+        ["Impacto Crítico Confirmado", br_money(resumo["impacto_critico_confirmado"])],
     ]
 
 
@@ -3041,7 +3034,7 @@ def build_export_criteria_rows(nome_a, nome_b, tolerancia):
         ["Tolerância configurada", br_money(tolerancia)],
         ["Dif. Empresa", "Empresa A - Empresa B"],
         ["Diferença", "Motorista A - Motorista B"],
-        ["Regra visual", "Diferenças dentro da tolerância aparecem para conferência, mas não entram no impacto crítico."],
+        ["Regra visual", "Diferenças dentro da tolerância e faltantes no ATUA aparecem para conferência, mas não entram no impacto crítico confirmado."],
     ]
 
 
@@ -3051,7 +3044,7 @@ def build_export_frames(df, tolerancia=0.50):
     divergentes_df = display_df[display_df["Status"] == "Divergente"].copy()
     tolerancia_df = display_df[display_df["Status"] == "OK Arred."].copy()
     faltantes_df = display_df[display_df["Status"].isin(["Faltante no ATUA", "Faltante no GW"])].copy()
-    criticos_df = display_df[display_df["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])].copy()
+    criticos_df = display_df[display_df["Status"].isin(["Divergente", "Faltante no GW"])].copy()
     return prepared, display_df, divergentes_df, tolerancia_df, faltantes_df, criticos_df
 
 
@@ -3118,7 +3111,10 @@ def build_excel_bytes(df, resumo, nome_a, nome_b, tolerancia):
         ws.append([f"Tolerância configurada: {br_money(tolerancia)}"])
         ws.append(["Dif. Empresa = Empresa A - Empresa B"])
         ws.append(["Diferença = Motorista A - Motorista B"])
-        ws.append(["Diferenças dentro da tolerância aparecem para conferência, mas não entram no impacto crítico."])
+        ws.append([
+            "Diferenças dentro da tolerância e faltantes no ATUA aparecem para conferência, "
+            "mas não entram no impacto crítico confirmado."
+        ])
         ws.append([])
         ws.append(list(frame.columns))
         style_header(ws, ws.max_row)
@@ -3175,7 +3171,7 @@ def build_excel_bytes(df, resumo, nome_a, nome_b, tolerancia):
             cell.border = border
             cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-    write_table_sheet(wb.create_sheet("Críticos e Faltantes"), "Divergentes e Faltantes", criticos_df, prepared)
+    write_table_sheet(wb.create_sheet("Críticos Confirmados"), "Divergentes e Faltantes no GW", criticos_df, prepared)
     write_table_sheet(wb.create_sheet("Conferência Detalhada"), "Conferência Detalhada", display_df, prepared)
     write_table_sheet(wb.create_sheet("Divergentes Reais"), "Divergentes Reais", divergentes_df, prepared)
     write_table_sheet(wb.create_sheet("Faltantes"), "Faltantes", faltantes_df, prepared)
@@ -3261,7 +3257,11 @@ def build_executive_pdf_bytes(df, resumo, nome_a, nome_b, tolerancia):
         Spacer(1, 0.18 * cm),
         Paragraph("Dif. Empresa = Empresa A - Empresa B", note_style),
         Paragraph("Diferença = Motorista A - Motorista B", note_style),
-        Paragraph("Diferenças dentro da tolerância aparecem para conferência, mas não entram no impacto crítico.", note_style),
+        Paragraph(
+            "Diferenças dentro da tolerância e faltantes no ATUA aparecem para conferência, "
+            "mas não entram no impacto crítico confirmado.",
+            note_style,
+        ),
         Spacer(1, 0.35 * cm),
         Paragraph("Resumo geral", heading_style),
         Spacer(1, 0.18 * cm),
@@ -3408,7 +3408,11 @@ def build_detailed_pdf_bytes(df, resumo, nome_a, nome_b, tolerancia):
         Spacer(1, 0.18 * cm),
         Paragraph("Dif. Empresa = Empresa A - Empresa B", note_style),
         Paragraph("Diferença = Motorista A - Motorista B", note_style),
-        Paragraph("Diferenças dentro da tolerância aparecem para conferência, mas não entram no impacto crítico.", note_style),
+        Paragraph(
+            "Diferenças dentro da tolerância e faltantes no ATUA aparecem para conferência, "
+            "mas não entram no impacto crítico confirmado.",
+            note_style,
+        ),
         Spacer(1, 0.35 * cm),
         Paragraph("Resumo executivo", heading_style),
         Spacer(1, 0.18 * cm),
@@ -3439,7 +3443,11 @@ def build_detailed_pdf_bytes(df, resumo, nome_a, nome_b, tolerancia):
     ]))
     story.append(criteria_table)
     story.append(Spacer(1, 0.28 * cm))
-    story.append(Paragraph("Diferenças dentro da tolerância aparecem para conferência, mas não entram no impacto crítico.", note_style))
+    story.append(Paragraph(
+        "Diferenças dentro da tolerância e faltantes no ATUA aparecem para conferência, "
+        "mas não entram no impacto crítico confirmado.",
+        note_style,
+    ))
     story.append(Spacer(1, 0.35 * cm))
 
     append_table(
@@ -3611,401 +3619,6 @@ def render_audit_debug():
                 for warning in data.get("warnings", []):
                     st.warning(warning)
 
-def render_sidebar():
-    with st.sidebar:
-        st.markdown(
-            f"""
-            <div class="sidebar-brand">
-                <div class="logo-mark">{fretevision_mark(54)}</div>
-                <div>
-                    <div class="brand-name">{safe_text(BRAND_NAME)}</div>
-                    <div class="brand-caption">{safe_text(BRAND_TAGLINE)}</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        page = st.radio(
-            "Menu",
-            ["Dashboard", "Nova Auditoria", "Histórico", "Relatórios", "Configurações", "Sobre"],
-            index=1,
-            label_visibility="collapsed",
-        )
-        st.markdown(
-            """
-            <div class="sidebar-profile">
-                <div class="user-chip">
-                    <div class="avatar">FV</div>
-                    <div>
-                        <div class="user-name">FRETE VISION</div>
-                        <div class="user-email">Plataforma de inteligência logística</div>
-                    </div>
-                </div>
-                <div class="progress-mini">
-                    <div class="progress-label"><span>Status do sistema</span><span>Online</span></div>
-                    <div class="progress-bar"><div class="progress-fill"></div></div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    return page
-def render_topbar(title):
-    st.markdown(
-        f"""
-        <div class="topbar">
-            <div class="topbar-left">
-                <div class="hamburger">{icon_menu()}</div>
-                <div class="page-name">{safe_text(title)}</div>
-            </div>
-            <div class="topbar-right">
-                <div class="search-box">{icon_doc(16)}<span>{safe_text(BRAND_TAGLINE)}</span></div>
-                <div class="top-icon">&#9679;</div>
-                <div class="top-icon">&#9670;<span class="dot">3</span></div>
-                <div class="top-icon">&#9684;<span class="dot">12</span></div>
-                <div class="top-icon">&#9635;<span class="dot">1</span></div>
-                <div class="top-avatar">FV</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-def render_breadcrumb(section, current):
-    if str(section).strip().lower() == "fretescan":
-        section = BRAND_NAME
-    st.markdown(
-        f"""<div class="breadcrumb"><b>{safe_text(section)}</b>&nbsp;/<span>{safe_text(current)}</span></div>""",
-        unsafe_allow_html=True,
-    )
-
-
-def render_hero():
-    st.markdown(
-        f"""
-        <div class="panel span-12 hero-shell">
-            <div class="panel-body">
-                <div class="hero-layout">
-                    <div class="hero-copy">
-                        <div class="hero-kicker">{safe_text(BRAND_PLATFORM)}</div>
-                        <h1>{safe_text(BRAND_TAGLINE)}.</h1>
-                        <p>Auditoria avançada, cálculo preciso de frete, viabilidade de rotas e controle operacional para operações que precisam proteger margem, acelerar decisões e enxergar a logística com clareza executiva.</p>
-                        <div class="hero-actions">
-                            <span class="hero-action primary">Auditoria documental com leitura rápida</span>
-                            <span class="hero-action">Conferência por CTE com tolerância financeira</span>
-                        </div>
-                        <div class="hero-stats">
-                            <div class="hero-stat"><b>23%</b><span>de redução média em perdas invisíveis na conferência.</span></div>
-                            <div class="hero-stat"><b>100%</b><span>de rastreabilidade no cruzamento dos relatórios.</span></div>
-                            <div class="hero-stat"><b>+50k</b><span>CTEs prontos para leitura executiva em escala.</span></div>
-                            <div class="hero-stat"><b>+200</b><span>operações com visão mais segura de resultado.</span></div>
-                        </div>
-                    </div>
-                    <div class="hero-visual">
-                        <div class="hero-brand-card">
-                            {fretevision_signature()}
-                            <div class="hero-proof-grid">
-                                <div class="hero-proof"><small>Solução</small><b>Auditoria de Faturas</b><span>Comparação objetiva entre os dois lados da operação.</span></div>
-                                <div class="hero-proof"><small>Cálculo</small><b>Frete 360º</b><span>Leitura financeira pronta para decisão executiva.</span></div>
-                                <div class="hero-proof"><small>Rotas</small><b>Viabilidade</b><span>Mais contexto para validar cenário e margem.</span></div>
-                                <div class="hero-proof"><small>Operação</small><b>Controle</b><span>Status, histórico e governança no mesmo fluxo.</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="feature-strip">
-                    <div class="feature-card"><small>Frente 01</small><b>Auditoria de Faturas</b><span>Identifique divergências, faltantes e arredondamentos com leitura clara por CTE.</span></div>
-                    <div class="feature-card"><small>Frente 02</small><b>Cálculo de Frete 360º</b><span>Transforme números soltos em visão financeira utilizável pelo time gestor.</span></div>
-                    <div class="feature-card"><small>Frente 03</small><b>Viabilidade de Rotas</b><span>Compare cenários com mais inteligência antes de aceitar perda de margem.</span></div>
-                    <div class="feature-card"><small>Frente 04</small><b>Controle Operacional</b><span>Consolide evidência documental e histórico para sustentar a tomada de decisão.</span></div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-def render_upload_box(label, key):
-    stored_key = f"{key}_stored"
-    version_key = f"{key}_widget_version"
-    legacy_upload = st.session_state.get(key)
-    if st.session_state.get(stored_key) is None and legacy_upload is not None and hasattr(legacy_upload, "getvalue"):
-        st.session_state[stored_key] = serialize_uploaded_file(legacy_upload)
-        st.session_state.pop(key, None)
-
-    current_file = st.session_state.get(stored_key)
-    is_loaded = current_file is not None
-    badge = '<span class="upload-badge loaded">Carregado</span>' if is_loaded else '<span class="upload-badge">Aguardando</span>'
-    widget_version = int(st.session_state.get(version_key, 0) or 0)
-    widget_key = f"{key}_widget_{widget_version}"
-
-    with st.container(border=True):
-        st.markdown(
-            f"""
-            <div class="upload-card{' is-loaded' if is_loaded else ''}">
-                <div class="upload-shell">
-                    <div class="upload-head">
-                        <div class="small-icon">{icon_doc(18)}</div>
-                        <div class="upload-copy">
-                            <div class="upload-title-row">
-                                <div class="upload-name">{safe_text(label)}</div>
-                                {badge}
-                            </div>
-                            <div class="upload-help">Arraste ou selecione o PDF do período.</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        if not is_loaded:
-            uploaded = st.file_uploader(label, type=["pdf"], key=widget_key, label_visibility="collapsed")
-            if uploaded:
-                st.session_state[stored_key] = serialize_uploaded_file(uploaded)
-                st.session_state.pop(widget_key, None)
-                st.rerun()
-            return current_file
-
-        st.markdown(
-            f"""
-            <div class="upload-inline-status">
-                <span class="upload-inline-dot"></span>
-                <strong>Arquivo pronto</strong>
-                <span>{safe_text(get_upload_name(current_file))} - {file_size(current_file)}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        action_col_a, action_col_b = st.columns(2)
-        with action_col_a:
-            if st.button("Trocar arquivo", key=f"{key}_replace", use_container_width=True):
-                st.session_state.pop(stored_key, None)
-                st.session_state.pop(widget_key, None)
-                st.session_state[version_key] = widget_version + 1
-                reset_audit_state()
-                st.session_state.audit_error = None
-                st.session_state.audit_error_details = []
-                st.rerun()
-        with action_col_b:
-            if st.button("Remover arquivo", key=f"{key}_remove", use_container_width=True):
-                st.session_state.pop(stored_key, None)
-                st.session_state.pop(widget_key, None)
-                st.session_state[version_key] = widget_version + 1
-                reset_audit_state()
-                st.session_state.audit_error = None
-                st.session_state.audit_error_details = []
-                st.rerun()
-        return current_file
-def render_upload_section():
-    with st.container(border=True):
-        st.markdown(
-            """
-            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
-                <div>
-                    <h3>Enviar documentos</h3>
-                    <div class="panel-subtitle">Selecione os dois relatórios do mesmo período para iniciar a auditoria.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        col_a, col_b = st.columns(2, gap="medium")
-        with col_a:
-            file_a = render_upload_box("Relatório A - ATUA", "up_a")
-        with col_b:
-            file_b = render_upload_box("Relatório B - GW", "up_b")
-    return file_a, file_b
-
-def render_tolerance_section():
-    with st.container(border=True):
-        st.markdown(
-            """
-            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
-                <div>
-                    <h3>Tolerância financeira</h3>
-                    <div class="panel-subtitle">Defina o limite aceito para diferenças de arredondamento.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        opts = {"R$ 0,00": 0.0, "R$ 0,30": 0.30, "R$ 0,50": 0.50, "R$ 1,00": 1.0, "Personalizado": -1}
-        selected = st.radio("Tolerância", list(opts.keys()), index=2, horizontal=True, label_visibility="collapsed")
-        value = opts[selected]
-        if value == -1:
-            value = st.number_input("Valor personalizado (R$)", 0.0, 999.0, 0.50, 0.10, format="%.2f")
-    return value
-
-
-def render_ops_panel():
-    hist = auditoria_io.carregar_historico()
-    latest = hist[0] if hist else None
-    current = None
-    if st.session_state.get("df_res") is not None and not st.session_state["df_res"].empty:
-        resumo = st.session_state.get("resumo", {})
-        current = {
-            "arquivo_a": st.session_state.get("nome_a", "-"),
-            "arquivo_b": st.session_state.get("nome_b", "-"),
-            "tolerancia": st.session_state.get("tol", 0),
-            "total": resumo.get("total", 0),
-            "divergentes": resumo.get("divergentes", 0),
-            "faltantes": resumo.get("faltantes_a", 0) + resumo.get("faltantes_b", 0),
-            "impacto": resumo.get("impacto_absoluto", 0),
-        }
-
-    html_parts = [
-        '<div class="panel span-12">',
-        '<div class="panel-title"><div><h3>Visão operacional</h3><div class="panel-subtitle">Resumo da sessão atual e da última auditoria salva.</div></div></div>',
-        '<div class="panel-body">',
-    ]
-
-    if current:
-        html_parts.append(
-            f'<div class="history-grid ops-grid">'
-            f'<div class="history-metric"><small>Sessão atual</small><b>{safe_text(current["arquivo_a"])} x {safe_text(current["arquivo_b"])}</b></div>'
-            f'<div class="history-metric"><small>Total analisado</small><b>{int(current["total"] or 0)}</b></div>'
-            f'<div class="history-metric"><small>Divergentes</small><b>{int(current["divergentes"] or 0)}</b></div>'
-            f'<div class="history-metric"><small>Faltantes</small><b>{int(current["faltantes"] or 0)}</b></div>'
-            f'</div>'
-        )
-        html_parts.append(
-            f'<div class="ops-note"><b>Tolerância atual:</b> {br_money(current["tolerancia"])}<br><b>Impacto crítico atual:</b> {br_money(current["impacto"])}<br><b>Arquivos em análise:</b> {safe_text(current["arquivo_a"])} e {safe_text(current["arquivo_b"])}.</div>'
-        )
-    elif latest:
-        html_parts.append(
-            f'<div class="history-grid ops-grid">'
-            f'<div class="history-metric"><small>Última auditoria</small><b>{safe_text(latest.get("data_hora", "-"))}</b></div>'
-            f'<div class="history-metric"><small>Total analisado</small><b>{int(latest.get("total", 0) or 0)}</b></div>'
-            f'<div class="history-metric"><small>Divergentes</small><b>{int(latest.get("divergentes", 0) or 0)}</b></div>'
-            f'<div class="history-metric"><small>Faltantes</small><b>{int(latest.get("faltantes_a", 0) or 0) + int(latest.get("faltantes_b", 0) or 0)}</b></div>'
-            f'</div>'
-        )
-        html_parts.append(
-            f'<div class="ops-note"><b>Total de auditorias salvas:</b> {len(hist)}<br><b>Última tolerância:</b> {br_money(latest.get("tolerancia", 0))}<br><b>Último impacto crítico:</b> {br_money(latest.get("impacto_absoluto", 0))}</div>'
-        )
-    else:
-        html_parts.append('<div class="ops-note"><b>Nenhuma auditoria processada nesta sessão.</b><br>Envie dois relatórios válidos para gerar o primeiro comparativo.</div>')
-
-    html_parts.append('</div></div>')
-    st.markdown(''.join(html_parts), unsafe_allow_html=True)
-def kpi_html(label, value, tone="purple", money=False):
-    money_class = " money" if money else ""
-    return (
-        f'<div class="panel span-3">'
-        f'<div class="panel-body">'
-        f'<div class="kpi-label">{safe_text(label)}</div>'
-        f'<div class="kpi-value{money_class} tone-{tone}">{safe_text(value)}</div>'
-        f'</div>'
-        f'</div>'
-    )
-
-
-def render_kpis(resumo, df):
-    df_calc = df.copy()
-    df_calc["EmpA"] = df_calc["Empresa A"].fillna(0)
-    df_calc["EmpB"] = df_calc["Empresa B"].fillna(0)
-    df_calc["MotA"] = df_calc["Motorista A"].fillna(0)
-    df_calc["MotB"] = df_calc["Motorista B"].fillna(0)
-    df_calc["DE"] = df_calc["EmpA"] - df_calc["EmpB"]
-    df_calc["DM"] = df_calc["MotA"] - df_calc["MotB"]
-    df_calc["MD"] = df_calc[["DE", "DM"]].abs().max(axis=1)
-
-    div_df = df_calc[df_calc["Status"] == "Divergente"]
-    crit_df = df_calc[df_calc["Status"].isin(["Divergente", "Faltante no ATUA", "Faltante no GW"])]
-
-    de_div = div_df["DE"].sum()
-    dm_div = div_df["DM"].sum()
-    imp_div = div_df["MD"].sum()
-    de_crit = crit_df["DE"].sum()
-    dm_crit = crit_df["DM"].sum()
-    imp_geral = df_calc["MD"].sum()
-
-    summary_html = (
-        '<div class="breadcrumb"><b>Resumo da auditoria</b><span>Resultado consolidado dos documentos processados</span></div>'
-        '<div class="dashboard-grid">'
-        f'{kpi_html("Total analisado", resumo["total"], "purple")}'
-        f'{kpi_html("OK", resumo["ok"], "green")}'
-        f'{kpi_html("OK Arred.", resumo["ok_arredondamento"], "blue")}'
-        f'{kpi_html("Diferenças dentro da tolerância", resumo["ok_arredondamento"], "blue")}'
-        f'{kpi_html("Divergentes reais", resumo["divergentes"], "red")}'
-        f'{kpi_html("Faltantes no ATUA", resumo["faltantes_a"], "orange")}'
-        f'{kpi_html("Faltantes no GW", resumo["faltantes_b"], "orange")}'
-        f'{kpi_html("Impacto Crítico Total", br_money(resumo["impacto_absoluto"]), "red", True)}'
-        '</div>'
-        '<div class="breadcrumb" style="margin-top:24px;"><b>Leitura financeira complementar</b><span>Detalhes de apoio para análise executiva</span></div>'
-        '<div class="dashboard-grid">'
-        f'{kpi_html("Diferença Empresa - Divergentes", br_money(de_div), "blue", True)}'
-        f'{kpi_html("Diferença Motorista - Divergentes", br_money(dm_div), "purple", True)}'
-        f'{kpi_html("Impacto - Divergentes", br_money(imp_div), "red", True)}'
-        f'{kpi_html("Diferença Empresa - Crítico Total", br_money(de_crit), "blue", True)}'
-        f'{kpi_html("Diferença Motorista - Crítico Total", br_money(dm_crit), "purple", True)}'
-        '</div>'
-        '<div class="panel span-12" style="margin-top:24px;">'
-        '<div class="panel-body">'
-        f'<div class="impact-line">Impacto geral incluindo arredondamentos: <b>{br_money(imp_geral)}</b></div>'
-        '<div class="explain">'
-        '<b>Divergentes</b> considera apenas CTEs encontrados nos dois relatórios com diferença acima da tolerância. '
-        '<b>Crítico total</b> soma divergentes reais e CTEs faltantes. '
-        '<b>OK Arred.</b> representa diferenças pequenas dentro da tolerância configurada. '
-        'As diferenças dentro da tolerância continuam visíveis para conferência, mas não entram no impacto crítico.'
-        '</div>'
-        '</div>'
-        '</div>'
-    )
-    st.markdown(summary_html, unsafe_allow_html=True)
-def render_chart(df):
-    with st.container(border=True):
-        st.markdown(
-            """
-            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin-bottom:18px;">
-                <div>
-                    <h3>Distribuição por status</h3>
-                    <div class="panel-subtitle">Volume de CTEs por classificação.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        counts = df["Status"].value_counts().reset_index()
-        counts.columns = ["Status", "Qtd"]
-        counts["Status visual"] = counts["Status"].replace({"OK por arredondamento": "OK Arred."})
-        colors = {
-            "OK": "#22c55e",
-            "OK Arred.": "#179cf4",
-            "Divergente": "#ef4444",
-            "Faltante no ATUA": "#ff9f1c",
-            "Faltante no GW": "#ff9f1c",
-        }
-        fig = px.bar(
-            counts,
-            x="Qtd",
-            y="Status visual",
-            color="Status visual",
-            orientation="h",
-            text="Qtd",
-            color_discrete_map=colors,
-        )
-        fig.update_layout(
-            height=270,
-            margin=dict(l=6, r=12, t=6, b=6),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            showlegend=False,
-            font=dict(family="Manrope, Segoe UI, sans-serif", color="#202236"),
-            xaxis=dict(title="", gridcolor="#efedf6", zeroline=False),
-            yaxis=dict(title="", showgrid=False),
-        )
-        fig.update_traces(marker_line_width=0, textposition="outside", hovertemplate="%{y}: %{x}<extra></extra>")
-        st.plotly_chart(fig, use_container_width=True)
-def status_style(value):
-    styles = {
-        "OK": "background-color:#dcfce7;color:#166534;font-weight:800;border-radius:99px;",
-        "OK Arred.": "background-color:#e8f3ff;color:#075985;font-weight:800;border-radius:99px;",
-        "Divergente": "background-color:#fee2e2;color:#991b1b;font-weight:800;border-radius:99px;",
-        "Faltante no ATUA": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
-        "Faltante no GW": "background-color:#fef3c7;color:#92400e;font-weight:800;border-radius:99px;",
-    }
-    return styles.get(value, "")
-
 
 def status_badge_html(value):
     tone = {
@@ -4069,6 +3682,7 @@ def render_table(df):
             "ok_arredondamento": int((prepared["_Status Base"] == "OK por arredondamento").sum()),
             "faltantes_a": int((prepared["_Status Base"] == "Faltante no ATUA").sum()),
             "faltantes_b": int((prepared["_Status Base"] == "Faltante no GW").sum()),
+            "volume_faltante_atua": int((prepared["_Status Base"] == "Faltante no ATUA").sum()),
         }
         st.markdown(build_detailed_counts_html(resumo), unsafe_allow_html=True)
 
@@ -4089,10 +3703,20 @@ def render_table(df):
         visible_prepared = apply_conference_filters(prepared, scope, diff, search, order)
         visible, money_columns = build_conference_display_table(visible_prepared)
 
-        header_html = ''.join(
-            f'<th class="{"cell-money" if column in money_columns else "cell-observation" if column == "Observação" else "cell-cte" if column == "CTE" else ""}">{safe_text(column)}</th>'
-            for column in visible.columns
-        )
+        header_cells = []
+        for column in visible.columns:
+            if column in money_columns:
+                header_class = "cell-money"
+            elif column == "Observação":
+                header_class = "cell-observation"
+            elif column == "CTE":
+                header_class = "cell-cte"
+            else:
+                header_class = ""
+            header_cells.append(
+                f'<th class="{header_class}">{safe_text(column)}</th>'
+            )
+        header_html = "".join(header_cells)
 
         row_html = []
         for row_index, row in visible.iterrows():
@@ -4105,259 +3729,28 @@ def render_table(df):
                 else:
                     css_class = get_table_cell_class(column, row_meta, money_columns)
                     cells.append(f'<td class="{css_class}">{safe_text(value)}</td>')
-            row_html.append(f'<tr class="{get_table_row_class(row_meta)}">{"".join(cells)}</tr>')
+            row_html.append(
+                f'<tr class="{get_table_row_class(row_meta)}">{"".join(cells)}</tr>'
+            )
 
         if not row_html:
-            row_html.append(f'<tr><td class="cell-empty" colspan="{len(visible.columns)}">Nenhum registro encontrado com os filtros atuais.</td></tr>')
+            row_html.append(
+                f'<tr><td class="cell-empty" colspan="{len(visible.columns)}">'
+                "Nenhum registro encontrado com os filtros atuais."
+                "</td></tr>"
+            )
 
-        table_html = '<div class="table-shell audit-results-shell"><table class="audit-table">' + f'<thead><tr>{header_html}</tr></thead>' + f'<tbody>{"".join(row_html)}</tbody></table></div>' + '<div class="table-scroll-hint">Use a roda do mouse sobre a tabela para rolar sem descer a página inteira.</div>'
+        table_html = (
+            '<div class="table-shell audit-results-shell">'
+            '<table class="audit-table">'
+            f'<thead><tr>{header_html}</tr></thead>'
+            f'<tbody>{"".join(row_html)}</tbody>'
+            '</table></div>'
+            '<div class="table-scroll-hint">'
+            "Use a roda do mouse sobre a tabela para rolar sem descer a página inteira."
+            "</div>"
+        )
         st.markdown(table_html, unsafe_allow_html=True)
-def render_exports(df, resumo, name_a, name_b, tolerance):
-    render_breadcrumb("Exportar relatório", "Arquivos executivos")
-    c1, c2, c3, c4 = st.columns(4, gap="large")
-    with c1:
-        with st.container(border=True):
-            st.markdown('<div class="export-card"><h4>CSV</h4><p>Dados brutos para análise.</p></div>', unsafe_allow_html=True)
-            st.download_button("Baixar CSV", auditoria_io.exportar_csv(df), "auditoria.csv", "text/csv", use_container_width=True)
-    with c2:
-        with st.container(border=True):
-            st.markdown('<div class="export-card"><h4>Excel</h4><p>Planilha formatada.</p></div>', unsafe_allow_html=True)
-            st.download_button("Baixar Excel", build_excel_bytes(df, resumo, name_a, name_b, tolerance), "auditoria.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    with c3:
-        with st.container(border=True):
-            st.markdown('<div class="export-card"><h4>PDF Executivo</h4><p>Resumo executivo com foco em criticidade.</p></div>', unsafe_allow_html=True)
-            st.download_button("Baixar PDF Executivo", build_executive_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_executiva.pdf", "application/pdf", use_container_width=True)
-    with c4:
-        with st.container(border=True):
-            st.markdown('<div class="export-card"><h4>PDF de Conferência Detalhada</h4><p>Resumo, critérios, tolerância, críticos, diferenças dentro da tolerância, faltantes e tabela completa.</p></div>', unsafe_allow_html=True)
-            st.download_button("Baixar PDF de Conferência Detalhada", build_detailed_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_conferencia_detalhada.pdf", "application/pdf", use_container_width=True)
-def render_history_page():
-    render_topbar("Histórico")
-    render_breadcrumb("FreteScan", "Histórico de auditorias")
-    hist = auditoria_io.carregar_historico()
-    if not hist:
-        st.markdown(
-            """
-            <div class="panel span-12">
-                <div class="panel-title"><div><h3>Histórico</h3><div class="panel-subtitle">Nenhuma auditoria registrada.</div></div></div>
-                <div class="panel-body"><div class="explain">Nenhuma auditoria registrada.</div></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        return
-
-    for item in pd.DataFrame(hist).head(8).to_dict("records"):
-        st.markdown(
-            f"""
-            <div class="panel span-12">
-                <div class="panel-title">
-                    <div>
-                        <h3>{safe_text(item.get('arquivo_a', ''))} x {safe_text(item.get('arquivo_b', ''))}</h3>
-                        <div class="panel-subtitle">{safe_text(item.get("data_hora", ""))}</div>
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <div class="history-grid">
-                        <div class="history-metric"><small>Tolerância</small><b>{br_money(item.get("tolerancia", 0))}</b></div>
-                        <div class="history-metric"><small>Total</small><b>{int(item.get("total", 0))}</b></div>
-                        <div class="history-metric"><small>Divergentes</small><b>{int(item.get("divergentes", 0))}</b></div>
-                        <div class="history-metric"><small>Faltantes</small><b>{int(item.get("faltantes_a", 0)) + int(item.get("faltantes_b", 0))}</b></div>
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-def render_reports_page():
-    render_topbar("Relatórios")
-    render_breadcrumb("FreteScan", "Relatórios")
-    hist = auditoria_io.carregar_historico()
-
-    if not hist:
-        st.markdown(
-            """
-            <div class="panel span-12">
-                <div class="panel-title"><div><h3>Relatórios</h3><div class="panel-subtitle">Nenhuma auditoria disponível para análise.</div></div></div>
-                <div class="panel-body"><div class="explain">Execute uma auditoria para começar a preencher esta área com histórico consolidado.</div></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        return
-
-    hist_df = pd.DataFrame(hist).fillna(0)
-    hist_df["faltantes_total"] = hist_df.get("faltantes_a", 0) + hist_df.get("faltantes_b", 0)
-    hist_df["arquivos"] = hist_df["arquivo_a"].astype(str) + " x " + hist_df["arquivo_b"].astype(str)
-
-    total_auditorias = len(hist_df)
-    media_total = int(round(hist_df.get("total", pd.Series(dtype=float)).mean())) if "total" in hist_df else 0
-    media_div = int(round(hist_df.get("divergentes", pd.Series(dtype=float)).mean())) if "divergentes" in hist_df else 0
-    ultima_execucao = str(hist_df.iloc[0].get("data_hora", "-"))
-
-    st.markdown(
-        f"""
-        <div class="dashboard-grid">
-            {kpi_html("Auditorias salvas", total_auditorias, "purple")}
-            {kpi_html("Média total analisado", media_total, "blue")}
-            {kpi_html("Média divergentes", media_div, "red")}
-            {kpi_html("Última execução", ultima_execucao, "green")}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    search_col, tol_col = st.columns([1.4, 1])
-    with search_col:
-        search = st.text_input("Buscar por arquivo", placeholder="Ex.: ABRIL ATUA")
-    with tol_col:
-        tolerancias = ["Todas"] + [f"R$ {float(x):.2f}" for x in sorted(hist_df["tolerancia"].astype(float).unique())]
-        selected_tol = st.selectbox("Tolerância", tolerancias)
-
-    visible = hist_df.copy()
-    if search:
-        search_norm = search.strip().lower()
-        visible = visible[
-            visible["arquivo_a"].astype(str).str.lower().str.contains(search_norm, na=False)
-            | visible["arquivo_b"].astype(str).str.lower().str.contains(search_norm, na=False)
-        ]
-    if selected_tol != "Todas":
-        visible = visible[visible["tolerancia"].astype(float) == float(selected_tol.replace("R$", "").strip())]
-
-    visible = visible[[
-        "data_hora",
-        "arquivo_a",
-        "arquivo_b",
-        "tolerancia",
-        "total",
-        "divergentes",
-        "faltantes_total",
-    ]].rename(columns={
-        "data_hora": "Data/Hora",
-        "arquivo_a": "Arquivo A",
-        "arquivo_b": "Arquivo B",
-        "tolerancia": "Tolerância",
-        "total": "Total analisado",
-        "divergentes": "Divergentes",
-        "faltantes_total": "Faltantes",
-    })
-
-    visible["Tolerância"] = visible["Tolerância"].apply(br_money)
-
-    header_html = ''.join(f'<th>{safe_text(col)}</th>' for col in visible.columns)
-    rows = []
-    for _, row in visible.iterrows():
-        cells = []
-        for col in visible.columns:
-            css_class = 'cell-money' if col in ["Tolerância"] else ''
-            cells.append(f'<td class="{css_class}">{safe_text(row[col])}</td>')
-        rows.append(f'<tr>{"".join(cells)}</tr>')
-    if not rows:
-        rows.append(f'<tr><td class="cell-empty" colspan="{len(visible.columns)}">Nenhum relatório encontrado com os filtros atuais.</td></tr>')
-
-    st.markdown(
-        """
-        <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin:28px 0 18px 0;">
-            <div>
-                <h3>Relatórios salvos</h3>
-                <div class="panel-subtitle">Consulte auditorias já executadas com filtro por arquivo e tolerância.</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f'<div class="table-shell"><table class="audit-table"><thead><tr>{header_html}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>',
-        unsafe_allow_html=True,
-    )
-
-    if st.session_state.get("df_res") is not None and not st.session_state["df_res"].empty:
-        st.markdown(
-            """
-            <div class="panel-title" style="min-height:64px;padding:0;border-bottom:1px solid #eeedf3;margin:28px 0 18px 0;">
-                <div>
-                    <h3>Relatório atual</h3>
-                    <div class="panel-subtitle">Exportações da auditoria aberta nesta sessão.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        render_exports(
-            st.session_state["df_res"],
-            st.session_state["resumo"],
-            st.session_state["nome_a"],
-            st.session_state["nome_b"],
-            st.session_state["tol"],
-        )
-
-def render_about_page():
-    render_topbar("Sobre")
-    render_breadcrumb("FreteScan", "Sobre")
-    st.markdown(
-        f"""
-        <div class="panel span-12">
-            <div class="panel-title"><div><h3>{safe_text(BRAND_NAME)}</h3><div class="panel-subtitle">{safe_text(BRAND_PLATFORM)}</div></div></div>
-            <div class="panel-body">
-                <p class="explain">
-                    A {safe_text(BRAND_NAME)} foi desenhada para transformar auditoria de frete em uma frente de inteligência logística.
-                    A plataforma cruza relatórios por CTE, evidencia impacto financeiro, separa arredondamentos e organiza a operação com uma leitura mais executiva,
-                    próxima da comunicação comercial do seu site de referência e coerente com a identidade da marca.
-                </p>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-def render_placeholder(page):
-    render_topbar(page)
-    render_breadcrumb("FreteScan", page)
-    st.markdown(
-        f"""
-        <div class="panel span-12">
-            <div class="panel-title"><div><h3>{safe_text(page)}</h3><div class="panel-subtitle">Módulo em preparação.</div></div></div>
-            <div class="panel-body"><div class="explain">Esta funcionalidade será disponibilizada em breve.</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_settings_page():
-    render_topbar("Configurações")
-    render_breadcrumb("FreteScan", "Configurações")
-    st.markdown(
-        """
-        <div class="dashboard-grid">
-            <div class="panel span-6">
-                <div class="panel-title"><div><h3>Ambiente</h3><div class="panel-subtitle">Informações operacionais da instância atual.</div></div></div>
-                <div class="panel-body">
-                    <div class="history-grid">
-                        <div class="history-metric"><small>Status</small><b>Online</b></div>
-                        <div class="history-metric"><small>Versão</small><b>v1.0.0</b></div>
-                        <div class="history-metric"><small>Interface</small><b>Streamlit</b></div>
-                        <div class="history-metric"><small>Persistência</small><b>Histórico local</b></div>
-                    </div>
-                </div>
-            </div>
-            <div class="panel span-6">
-                <div class="panel-title"><div><h3>Regras visíveis</h3><div class="panel-subtitle">Parâmetros operacionais expostos ao usuário.</div></div></div>
-                <div class="panel-body">
-                    <div class="history-grid">
-                        <div class="history-metric"><small>Tolerâncias</small><b>0,00 | 0,30 | 0,50 | 1,00</b></div>
-                        <div class="history-metric"><small>Formatos</small><b>PDF | Excel | CSV</b></div>
-                        <div class="history-metric"><small>Comparação</small><b>Por CTE</b></div>
-                        <div class="history-metric"><small>Histórico</small><b>Até 100 auditorias</b></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 def render_processing_card(current_step=1, current_label=None):
     current_step = max(1, min(current_step, len(PROCESSING_STEPS)))
@@ -4574,22 +3967,51 @@ def render_upload_section():
 
 
 def render_kpis(resumo, df):
-    faltantes_total = int(resumo["faltantes_a"]) + int(resumo["faltantes_b"])
     tolerance_text = br_money(st.session_state.get("tol", 0.50))
+    mostrar_potencial = st.checkbox(
+        "Considerar todos os faltantes no impacto potencial",
+        value=False,
+        key="show_potential_impact",
+    )
+    potential_card = (
+        '<div class="summary-card impact">'
+        '<small>Impacto potencial total</small>'
+        f'<b>{safe_text(br_money(resumo["impacto_potencial_total"]))}</b>'
+        '<span>Inclui todos os faltantes</span></div>'
+        if mostrar_potencial else ""
+    )
     summary_html = (
         '<div class="section-head" style="margin-top:10px;">'
         '<h3 class="section-title">Resumo da auditoria</h3>'
         '<div class="section-subtitle">Resultado direto da comparação entre os dois relatórios processados.</div>'
         '</div>'
         '<div class="summary-grid">'
-        f'<div class="summary-card"><small>Total analisado</small><b>{safe_text(resumo["total"])}</b><span>Tolerância: {safe_text(tolerance_text)}</span></div>'
-        f'<div class="summary-card ok"><small>OK</small><b>{safe_text(resumo["ok"])}</b><span>Sem diferença identificada</span></div>'
-        f'<div class="summary-card round"><small>OK Arred.</small><b>{safe_text(resumo["ok_arredondamento"])}</b><span>Diferenças dentro da tolerância</span></div>'
-        f'<div class="summary-card div"><small>Divergentes reais</small><b>{safe_text(resumo["divergentes"])}</b><span>Acima da tolerância configurada</span></div>'
-        f'<div class="summary-card miss"><small>Faltantes</small><b>{safe_text(faltantes_total)}</b><span>No ATUA: {safe_text(resumo["faltantes_a"])} • No GW: {safe_text(resumo["faltantes_b"])}</span></div>'
-        f'<div class="summary-card impact"><small>Impacto crítico total</small><b>{safe_text(br_money(resumo["impacto_absoluto"]))}</b><span>Não inclui OK por arredondamento</span></div>'
+        f'<div class="summary-card"><small>Total analisado</small>'
+        f'<b>{safe_text(resumo["total"])}</b>'
+        f'<span>Tolerância: {safe_text(tolerance_text)}</span></div>'
+        f'<div class="summary-card ok"><small>OK</small>'
+        f'<b>{safe_text(resumo["ok"])}</b><span>Sem diferença identificada</span></div>'
+        f'<div class="summary-card round"><small>OK Arred.</small>'
+        f'<b>{safe_text(resumo["ok_arredondamento"])}</b>'
+        '<span>Diferenças dentro da tolerância</span></div>'
+        f'<div class="summary-card div"><small>Divergentes reais</small>'
+        f'<b>{safe_text(resumo["divergentes"])}</b>'
+        '<span>Acima da tolerância configurada</span></div>'
+        '<div class="summary-card miss"><small>Volume faltante no ATUA</small>'
+        f'<b>{safe_text(resumo["volume_faltante_atua"])}</b>'
+        '<span>Existe no GW e não existe no ATUA</span></div>'
+        f'<div class="summary-card miss"><small>Faltante no GW</small>'
+        f'<b>{safe_text(resumo["faltantes_b"])}</b>'
+        '<span>Existe no ATUA e não existe no GW</span></div>'
+        '<div class="summary-card impact"><small>Impacto crítico confirmado</small>'
+        f'<b>{safe_text(br_money(resumo["impacto_critico_confirmado"]))}</b>'
+        '<span>Divergentes reais + faltantes no GW</span></div>'
+        f'{potential_card}'
         '</div>'
-        '<div class="summary-note">Diferenças dentro da tolerância continuam visíveis para conferência na tabela, mas não compõem o impacto crítico.</div>'
+        '<div class="summary-note">'
+        'Diferenças dentro da tolerância e faltantes no ATUA continuam visíveis '
+        'para conferência, mas não compõem o impacto crítico confirmado.'
+        '</div>'
     )
     st.markdown(summary_html, unsafe_allow_html=True)
 
@@ -4683,13 +4105,37 @@ def render_exports(df, resumo, name_a, name_b, tolerance):
     )
     c1, c2, c3, c4 = st.columns(4, gap="small")
     with c1:
-        st.download_button("Baixar CSV", auditoria_io.exportar_csv(df), "auditoria.csv", "text/csv", use_container_width=True)
+        st.download_button(
+            "Baixar CSV",
+            auditoria_io.exportar_csv(df),
+            "auditoria.csv",
+            "text/csv",
+            use_container_width=True,
+        )
     with c2:
-        st.download_button("Baixar Excel", build_excel_bytes(df, resumo, name_a, name_b, tolerance), "auditoria.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        st.download_button(
+            "Baixar Excel",
+            build_excel_bytes(df, resumo, name_a, name_b, tolerance),
+            "auditoria.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
     with c3:
-        st.download_button("Baixar PDF Executivo", build_executive_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_executiva.pdf", "application/pdf", use_container_width=True)
+        st.download_button(
+            "Baixar PDF Executivo",
+            build_executive_pdf_bytes(df, resumo, name_a, name_b, tolerance),
+            "auditoria_executiva.pdf",
+            "application/pdf",
+            use_container_width=True,
+        )
     with c4:
-        st.download_button("Baixar PDF de Conferência Detalhada", build_detailed_pdf_bytes(df, resumo, name_a, name_b, tolerance), "auditoria_conferencia_detalhada.pdf", "application/pdf", use_container_width=True)
+        st.download_button(
+            "Baixar PDF de Conferência Detalhada",
+            build_detailed_pdf_bytes(df, resumo, name_a, name_b, tolerance),
+            "auditoria_conferencia_detalhada.pdf",
+            "application/pdf",
+            use_container_width=True,
+        )
 
 
 def render_marketing_page():
